@@ -66,8 +66,8 @@
 
   // 用户状态配置
   const USER_STATUS_CONFIG: Record<string, { type: 'success' | 'warning'; text: string }> = {
-    'true': { type: 'success', text: '启用' },
-    'false': { type: 'warning', text: '禁用' }
+    true: { type: 'success', text: '启用' },
+    false: { type: 'warning', text: '禁用' }
   }
 
   const getUserStatusConfig = (isActive: boolean) => {

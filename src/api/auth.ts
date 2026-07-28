@@ -1,7 +1,7 @@
 /**
  * 认证 API
  * 对接 OmniPG 后端 PostgREST 接口
- * 
+ *
  * 认证方式：Casdoor JWT
  * - 前端通过 Casdoor 登录获取 JWT token
  * - 后续请求通过 Authorization 头携带 token

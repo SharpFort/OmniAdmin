@@ -62,7 +62,7 @@ export class MenuProcessor {
   }
 
   private convertMenuTreeToRoutes(items: Api.SystemManage.MenuTreeItem[]): AppRouteRecord[] {
-    return items.map(item => ({
+    return items.map((item) => ({
       path: item.path,
       name: item.name,
       component: item.component,

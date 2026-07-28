@@ -37,7 +37,11 @@
 </template>
 
 <script setup lang="ts">
-  import { fetchGetMenuTree, fetchGetRolePermissions, fetchUpdateRolePermissions } from '@/api/system-manage'
+  import {
+    fetchGetMenuTree,
+    fetchGetRolePermissions,
+    fetchUpdateRolePermissions
+  } from '@/api/system-manage'
 
   type RoleListItem = Api.SystemManage.RoleListItem
 
@@ -96,7 +100,7 @@
     try {
       const permissions = await fetchGetRolePermissions(props.roleData.id)
       // 设置已选中的菜单
-      const checkedIds = permissions.menus.map(m => m.id)
+      const checkedIds = permissions.menus.map((m) => m.id)
       menuTreeRef.value?.setCheckedKeys(checkedIds)
     } catch (error) {
       console.error('加载角色权限失败:', error)

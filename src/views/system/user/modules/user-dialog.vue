@@ -16,7 +16,12 @@
         <ElInput v-model="formData.phone" placeholder="请输入电话" />
       </ElFormItem>
       <ElFormItem label="密码" prop="password" v-if="dialogType === 'add'">
-        <ElInput v-model="formData.password" type="password" placeholder="请输入密码" show-password />
+        <ElInput
+          v-model="formData.password"
+          type="password"
+          placeholder="请输入密码"
+          show-password
+        />
       </ElFormItem>
       <ElFormItem label="租户" prop="tenant_id">
         <ElInput v-model="formData.tenant_id" placeholder="请输入租户ID" />
@@ -73,16 +78,12 @@
       { required: true, message: '请输入用户名', trigger: 'blur' },
       { min: 2, max: 50, message: '长度在 2 到 50 个字符', trigger: 'blur' }
     ],
-    email: [
-      { type: 'email', message: '请输入正确的邮箱格式', trigger: 'blur' }
-    ],
+    email: [{ type: 'email', message: '请输入正确的邮箱格式', trigger: 'blur' }],
     password: [
       { required: true, message: '请输入密码', trigger: 'blur' },
       { min: 6, message: '密码至少 6 个字符', trigger: 'blur' }
     ],
-    tenant_id: [
-      { required: true, message: '请输入租户ID', trigger: 'blur' }
-    ]
+    tenant_id: [{ required: true, message: '请输入租户ID', trigger: 'blur' }]
   }
 
   const initFormData = () => {

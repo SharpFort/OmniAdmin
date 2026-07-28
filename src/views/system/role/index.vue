@@ -122,7 +122,11 @@
           const statusConfig = row.is_active
             ? { type: 'success', text: '启用' }
             : { type: 'warning', text: '禁用' }
-          return h(ElTag, { type: statusConfig.type as 'success' | 'warning' }, () => statusConfig.text)
+          return h(
+            ElTag,
+            { type: statusConfig.type as 'success' | 'warning' },
+            () => statusConfig.text
+          )
         }
       },
       {

@@ -129,18 +129,16 @@
       { required: true, message: '请输入菜单名称', trigger: 'blur' },
       { min: 2, max: 50, message: '长度在 2 到 50 个字符', trigger: 'blur' }
     ],
-    name: [
-      { required: true, message: '请输入唯一标识', trigger: 'blur' }
-    ]
+    name: [{ required: true, message: '请输入唯一标识', trigger: 'blur' }]
   })
 
   // 可用的父级菜单（排除当前菜单及其子菜单）
   const availableParents = computed(() => {
     const tree = props.menuTree || []
     const result: Api.SystemManage.MenuTreeItem[] = []
-    
+
     const flatten = (nodes: Api.SystemManage.MenuTreeItem[]) => {
-      nodes.forEach(node => {
+      nodes.forEach((node) => {
         // 排除当前编辑的菜单
         if (node.id !== props.editData?.id) {
           result.push(node)
@@ -150,7 +148,7 @@
         }
       })
     }
-    
+
     flatten(tree)
     return result
   })

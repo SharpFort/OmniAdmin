@@ -1,6 +1,6 @@
 /**
  * usePostgrestTable - PostgREST 专用表格 Hook
- * 
+ *
  * 为 PostgREST 设计的表格数据管理方案，支持：
  * - 自动分页（offset/limit）
  * - PostgREST 查询语法
@@ -91,7 +91,7 @@ export function usePostgrestTable<T>(config: UsePostgrestTableConfig<T>) {
 
   // 重置搜索
   const resetSearch = () => {
-    Object.keys(searchParams).forEach(key => {
+    Object.keys(searchParams).forEach((key) => {
       searchParams[key] = undefined
     })
     filters.value = []

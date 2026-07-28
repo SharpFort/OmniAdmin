@@ -61,7 +61,10 @@
   const editData = ref<Api.SystemManage.MenuTreeItem | null>(null)
 
   // 菜单类型配置
-  const MENU_TYPE_CONFIG: Record<string, { type: 'primary' | 'success' | 'warning' | 'info'; text: string }> = {
+  const MENU_TYPE_CONFIG: Record<
+    string,
+    { type: 'primary' | 'success' | 'warning' | 'info'; text: string }
+  > = {
     directory: { type: 'info', text: '目录' },
     menu: { type: 'primary', text: '菜单' },
     button: { type: 'warning', text: '按钮' }
