@@ -9,6 +9,7 @@ export { useAuth } from './core/useAuth'
 
 // 表格数据管理方案
 export { useTable } from './core/useTable'
+export { usePostgrestTable } from './core/usePostgrestTable'
 
 // 表格列配置管理
 export { useTableColumns } from './core/useTableColumns'

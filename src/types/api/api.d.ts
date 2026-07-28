@@ -1,37 +1,3 @@
-/**
- * API 接口类型定义模块
- *
- * 提供所有后端接口的类型定义
- *
- * ## 主要功能
- *
- * - 通用类型（分页参数、响应结构等）
- * - 认证类型（登录、用户信息等）
- * - 系统管理类型（用户、角色等）
- * - 全局命名空间声明
- *
- * ## 使用场景
- *
- * - API 请求参数类型约束
- * - API 响应数据类型定义
- * - 接口文档类型同步
- *
- * ## 注意事项
- *
- * - 在 .vue 文件使用需要在 eslint.config.mjs 中配置 globals: { Api: 'readonly' }
- * - 使用全局命名空间，无需导入即可使用
- *
- * ## 使用方式
- *
- * ```typescript
- * const params: Api.Auth.LoginParams = { userName: 'admin', password: '123456' }
- * const response: Api.Auth.UserInfo = await fetchUserInfo()
- * ```
- *
- * @module types/api/api
- * @author Art Design Pro Team
- */
-
 declare namespace Api {
   /** 通用类型 */
   namespace Common {
@@ -56,6 +22,14 @@ declare namespace Api {
       total: number
     }
 
+    /** PostgREST 列表响应 */
+    interface PostgrestListResponse<T> {
+      data: T[]
+      total: number
+      offset: number
+      limit: number
+    }
+
     /** 启用状态 */
     type EnableStatus = '1' | '2'
   }
@@ -64,72 +38,156 @@ declare namespace Api {
   namespace Auth {
     /** 登录参数 */
     interface LoginParams {
-      userName: string
+      username: string
       password: string
     }
 
     /** 登录响应 */
     interface LoginResponse {
       token: string
-      refreshToken: string
+      refresh_token?: string
     }
 
     /** 用户信息 */
     interface UserInfo {
-      buttons: string[]
-      roles: string[]
-      userId: number
-      userName: string
+      id: string
+      username: string
       email: string
-      avatar?: string
+      phone: string
+      tenant_id: string
+      dept_id: string
+      is_active: boolean
+      roles: string[]
+      permissions?: string[]
+      created_at: string
+      updated_at: string
     }
   }
 
-  /** 系统管理类型 */
+  /** 系统管理 - 用户 */
   namespace SystemManage {
-    /** 用户列表 */
-    type UserList = Api.Common.PaginatedResponse<UserListItem>
-
-    /** 用户列表项 */
+    /** 用户列表项 (对应 v_user_list) */
     interface UserListItem {
-      id: number
-      avatar: string
-      status: string
-      userName: string
-      userGender: string
-      nickName: string
-      userPhone: string
-      userEmail: string
-      userRoles: string[]
-      createBy: string
-      createTime: string
-      updateBy: string
-      updateTime: string
+      id: string
+      username: string
+      email: string
+      phone: string
+      tenant_id: string
+      dept_id: string
+      tenant_name: string
+      dept_name: string
+      is_active: boolean
+      roles: string[]
+      created_at: string
+      updated_at: string
+      deleted_at?: string
     }
 
     /** 用户搜索参数 */
-    type UserSearchParams = Partial<
-      Pick<UserListItem, 'id' | 'userName' | 'userGender' | 'userPhone' | 'userEmail' | 'status'> &
-        Api.Common.CommonSearchParams
-    >
+    interface UserSearchParams {
+      query?: string
+      dept_id?: string
+      status?: string
+      offset?: number
+      limit?: number
+    }
 
-    /** 角色列表 */
-    type RoleList = Api.Common.PaginatedResponse<RoleListItem>
+    /** 创建用户参数 */
+    interface CreateUserParams {
+      p_username: string
+      p_password: string
+      p_tenant_id: string
+      p_email?: string
+      p_phone?: string
+      p_dept_id?: string
+    }
 
-    /** 角色列表项 */
+    /** 角色列表项 (对应 v_role_list) */
     interface RoleListItem {
-      roleId: number
-      roleName: string
-      roleCode: string
+      id: string
+      role_code: string
+      role_name: string
       description: string
-      enabled: boolean
-      createTime: string
+      is_active: boolean
+      tenant_id?: string
+      tenant_name?: string
+      api_count: number
+      menu_count: number
+      users_count: number
+      created_at: string
+      updated_at: string
+      deleted_at?: string
     }
 
     /** 角色搜索参数 */
-    type RoleSearchParams = Partial<
-      Pick<RoleListItem, 'roleId' | 'roleName' | 'roleCode' | 'description' | 'enabled'> &
-        Api.Common.CommonSearchParams
-    >
+    interface RoleSearchParams {
+      query?: string
+      is_active?: boolean
+      offset?: number
+      limit?: number
+    }
+
+    /** 角色权限详情 */
+    interface RolePermissions {
+      role_id: string
+      role_code: string
+      role_name: string
+      menus: MenuTreeItem[]
+      apis: ApiItem[]
+    }
+
+    /** 菜单树项 */
+    interface MenuTreeItem {
+      id: string
+      parent_id: string
+      type: 'directory' | 'menu' | 'button'
+      name: string
+      path: string
+      component: string
+      title: string
+      icon: string
+      permission_code: string
+      sort_order: number
+      is_active: boolean
+      children?: MenuTreeItem[]
+    }
+
+    /** API 项 */
+    interface ApiItem {
+      id: string
+      path: string
+      method: string
+      api_name: string
+      is_active: boolean
+    }
+
+    /** 部门树项 */
+    interface DeptTreeItem {
+      id: string
+      dept_name: string
+      parent_id: string
+      sort_order: number
+      is_active: boolean
+      children?: DeptTreeItem[]
+    }
+
+    /** 更新角色权限参数 */
+    interface UpdateRolePermissionsParams {
+      p_role_id: string
+      p_menu_ids: string[]
+      p_api_ids: string[]
+    }
+
+    /** 分配角色参数 */
+    interface AssignRoleParams {
+      p_user_id: string
+      p_role_id: string
+    }
+
+    /** 批量分配角色参数 */
+    interface BatchAssignRolesParams {
+      p_user_id: string
+      p_role_ids: string[]
+    }
   }
 }

@@ -2,16 +2,16 @@
   <ElDialog
     v-model="visible"
     :title="dialogType === 'add' ? '新增角色' : '编辑角色'"
-    width="30%"
+    width="500px"
     align-center
     @close="handleClose"
   >
     <ElForm ref="formRef" :model="form" :rules="rules" label-width="120px">
-      <ElFormItem label="角色名称" prop="roleName">
-        <ElInput v-model="form.roleName" placeholder="请输入角色名称" />
+      <ElFormItem label="角色编码" prop="role_code">
+        <ElInput v-model="form.role_code" placeholder="请输入角色编码" />
       </ElFormItem>
-      <ElFormItem label="角色编码" prop="roleCode">
-        <ElInput v-model="form.roleCode" placeholder="请输入角色编码" />
+      <ElFormItem label="角色名称" prop="role_name">
+        <ElInput v-model="form.role_name" placeholder="请输入角色名称" />
       </ElFormItem>
       <ElFormItem label="描述" prop="description">
         <ElInput
@@ -22,7 +22,7 @@
         />
       </ElFormItem>
       <ElFormItem label="启用">
-        <ElSwitch v-model="form.enabled" />
+        <ElSwitch v-model="form.is_active" />
       </ElFormItem>
     </ElForm>
     <template #footer>
@@ -58,44 +58,29 @@
 
   const formRef = ref<FormInstance>()
 
-  /**
-   * 弹窗显示状态双向绑定
-   */
   const visible = computed({
     get: () => props.modelValue,
     set: (value) => emit('update:modelValue', value)
   })
 
-  /**
-   * 表单验证规则
-   */
   const rules = reactive<FormRules>({
-    roleName: [
-      { required: true, message: '请输入角色名称', trigger: 'blur' },
-      { min: 2, max: 20, message: '长度在 2 到 20 个字符', trigger: 'blur' }
-    ],
-    roleCode: [
+    role_code: [
       { required: true, message: '请输入角色编码', trigger: 'blur' },
       { min: 2, max: 50, message: '长度在 2 到 50 个字符', trigger: 'blur' }
     ],
-    description: [{ required: true, message: '请输入角色描述', trigger: 'blur' }]
+    role_name: [
+      { required: true, message: '请输入角色名称', trigger: 'blur' },
+      { min: 2, max: 20, message: '长度在 2 到 20 个字符', trigger: 'blur' }
+    ]
   })
 
-  /**
-   * 表单数据
-   */
-  const form = reactive<RoleListItem>({
-    roleId: 0,
-    roleName: '',
-    roleCode: '',
+  const form = reactive({
+    role_code: '',
+    role_name: '',
     description: '',
-    createTime: '',
-    enabled: true
+    is_active: true
   })
 
-  /**
-   * 监听弹窗打开，初始化表单数据
-   */
   watch(
     () => props.modelValue,
     (newVal) => {
@@ -103,9 +88,6 @@
     }
   )
 
-  /**
-   * 监听角色数据变化，更新表单
-   */
   watch(
     () => props.roleData,
     (newData) => {
@@ -114,37 +96,29 @@
     { deep: true }
   )
 
-  /**
-   * 初始化表单数据
-   * 根据弹窗类型填充表单或重置表单
-   */
   const initForm = () => {
     if (props.dialogType === 'edit' && props.roleData) {
-      Object.assign(form, props.roleData)
+      Object.assign(form, {
+        role_code: props.roleData.role_code || '',
+        role_name: props.roleData.role_name || '',
+        description: props.roleData.description || '',
+        is_active: props.roleData.is_active !== false
+      })
     } else {
       Object.assign(form, {
-        roleId: 0,
-        roleName: '',
-        roleCode: '',
+        role_code: '',
+        role_name: '',
         description: '',
-        createTime: '',
-        enabled: true
+        is_active: true
       })
     }
   }
 
-  /**
-   * 关闭弹窗并重置表单
-   */
   const handleClose = () => {
     visible.value = false
     formRef.value?.resetFields()
   }
 
-  /**
-   * 提交表单
-   * 验证通过后调用接口保存数据
-   */
   const handleSubmit = async () => {
     if (!formRef.value) return
 

@@ -424,7 +424,8 @@ export const upgradeLogList = ref<UpgradeLog[]>([])
   }
 }
 
-// 清理语言文件
+/* eslint-disable @typescript-eslint/no-unused-vars */
+// 清理语言文件（保留多语言文件，此函数暂不使用）
 async function cleanLanguageFiles() {
   const languageFiles = [
     { path: 'src/locales/langs/zh.json', name: '中文语言文件' },
@@ -491,7 +492,8 @@ async function cleanLanguageFiles() {
   }
 }
 
-// 清理快速入口组件
+/* eslint-disable @typescript-eslint/no-unused-vars */
+// 清理快速入口组件（保留快速入口，此函数暂不使用）
 async function cleanFastEnterComponent() {
   const fastEnterPath = path.resolve(process.cwd(), 'src/config/fastEnter.ts')
 

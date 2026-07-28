@@ -10,7 +10,7 @@
 import type { AppRouteRecord } from '@/types/router'
 import { useUserStore } from '@/store/modules/user'
 import { useAppMode } from '@/hooks/core/useAppMode'
-import { fetchGetMenuList } from '@/api/system-manage'
+import { fetchGetMenuTree } from '@/api/system-manage'
 import { asyncRoutes } from '../routes/asyncRoutes'
 import { RoutesAlias } from '../routesAlias'
 import { formatMenuTitle } from '@/utils'
@@ -57,8 +57,24 @@ export class MenuProcessor {
    * 处理后端控制模式的菜单
    */
   private async processBackendMenu(): Promise<AppRouteRecord[]> {
-    const list = await fetchGetMenuList()
-    return this.filterEmptyMenus(list)
+    const list = await fetchGetMenuTree()
+    return this.filterEmptyMenus(this.convertMenuTreeToRoutes(list))
+  }
+
+  private convertMenuTreeToRoutes(items: Api.SystemManage.MenuTreeItem[]): AppRouteRecord[] {
+    return items.map(item => ({
+      path: item.path,
+      name: item.name,
+      component: item.component,
+      meta: {
+        title: item.title,
+        icon: item.icon,
+        isHide: false,
+        isHideTab: false,
+        keepAlive: false
+      },
+      children: item.children ? this.convertMenuTreeToRoutes(item.children) : undefined
+    }))
   }
 
   /**

@@ -83,6 +83,10 @@ axiosInstance.interceptors.request.use(
 /** 响应拦截器 */
 axiosInstance.interceptors.response.use(
   (response: AxiosResponse<BaseResponse>) => {
+    // PostgREST 兼容：如果返回的是数组或没有 code 字段，直接返回
+    if (Array.isArray(response.data) || typeof response.data !== 'object' || response.data === null) {
+      return response
+    }
     const { code, msg } = response.data
     if (code === ApiStatus.success) return response
     if (code === ApiStatus.unauthorized) handleUnauthorizedError(msg)
