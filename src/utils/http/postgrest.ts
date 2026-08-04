@@ -108,8 +108,8 @@ class PostgrestClient {
     this.baseURL = import.meta.env.VITE_API_URL || ''
   }
 
-  /** 获取 Axios 实例（带 token） */
-  private getConfig(config?: AxiosRequestConfig): AxiosRequestConfig {
+  /** 获取 Axios 配置（带 token 刷新） */
+  private async getConfig(config?: AxiosRequestConfig): Promise<AxiosRequestConfig> {
     const userStore = useUserStore()
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
@@ -117,8 +117,11 @@ class PostgrestClient {
       ...(config?.headers as Record<string, string>)
     }
 
+    // Phase 3: token 过期则通过 Logto SDK 刷新
     if (userStore.accessToken) {
-      headers['Authorization'] = `Bearer ${userStore.accessToken}`
+      const { ensureFreshToken } = await import('@/config/logto')
+      const fresh = await ensureFreshToken().catch(() => userStore.accessToken)
+      headers['Authorization'] = `Bearer ${fresh}`
     }
 
     return {
@@ -166,7 +169,8 @@ class PostgrestClient {
     }
 
     const url = `${path}?${params.toString()}`
-    const response = await axios.get<T[]>(url, this.getConfig())
+    const config = await this.getConfig()
+    const response = await axios.get<T[]>(url, config)
 
     const total = parseContentRangeTotal(response)
 
@@ -194,7 +198,8 @@ class PostgrestClient {
     }
 
     const url = `${path}?${params.toString()}`
-    const response = await axios.get<T[]>(url, this.getConfig())
+    const config = await this.getConfig()
+    const response = await axios.get<T[]>(url, config)
 
     if (!response.data.length) {
       throw new Error('记录不存在')
@@ -209,7 +214,8 @@ class PostgrestClient {
    * @param params 参数对象
    */
   async rpc<T = any>(procName: string, params: Record<string, any> = {}): Promise<T> {
-    const response = await axios.post<T>(`/rpc/${procName}`, params, this.getConfig())
+    const config = await this.getConfig()
+    const response = await axios.post<T>(`/rpc/${procName}`, params, config)
     return response.data
   }
 
@@ -219,11 +225,8 @@ class PostgrestClient {
    * @param data 数据对象
    */
   async create<T>(path: string, data: Record<string, any>): Promise<T> {
-    const response = await axios.post<T>(
-      path,
-      data,
-      this.getConfig({ headers: { Prefer: 'return=representation' } })
-    )
+    const config = await this.getConfig({ headers: { Prefer: 'return=representation' } })
+    const response = await axios.post<T>(path, data, config)
     return response.data
   }
 
@@ -238,11 +241,8 @@ class PostgrestClient {
     params.set('id', `eq.${id}`)
 
     const url = `${path}?${params.toString()}`
-    const response = await axios.patch<T>(
-      url,
-      data,
-      this.getConfig({ headers: { Prefer: 'return=representation' } })
-    )
+    const config = await this.getConfig({ headers: { Prefer: 'return=representation' } })
+    const response = await axios.patch<T>(url, data, config)
     return response.data
   }
 
@@ -256,7 +256,8 @@ class PostgrestClient {
     params.set('id', `eq.${id}`)
 
     const url = `${path}?${params.toString()}`
-    await axios.delete(url, this.getConfig())
+    const config = await this.getConfig()
+    await axios.delete(url, config)
   }
 }
 

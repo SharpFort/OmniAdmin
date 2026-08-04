@@ -16,6 +16,7 @@
 
 import axios, { AxiosRequestConfig, AxiosResponse, InternalAxiosRequestConfig } from 'axios'
 import { useUserStore } from '@/store/modules/user'
+import { ensureFreshToken } from '@/config/logto'
 import { ApiStatus } from './status'
 import { HttpError, handleError, showError, showSuccess } from './error'
 import { $t } from '@/locales'
@@ -36,6 +37,7 @@ let unauthorizedTimer: NodeJS.Timeout | null = null
 interface ExtendedAxiosRequestConfig extends AxiosRequestConfig {
   showErrorMessage?: boolean
   showSuccessMessage?: boolean
+  _retry?: boolean
 }
 
 const { VITE_API_URL, VITE_WITH_CREDENTIALS } = import.meta.env
@@ -49,7 +51,7 @@ const axiosInstance = axios.create({
   transformResponse: [
     (data, headers) => {
       const contentType = headers['content-type']
-      if (contentType?.includes('application/json')) {
+      if (typeof contentType === 'string' && contentType.includes('application/json')) {
         try {
           return JSON.parse(data)
         } catch {
@@ -63,9 +65,13 @@ const axiosInstance = axios.create({
 
 /** 请求拦截器 */
 axiosInstance.interceptors.request.use(
-  (request: InternalAxiosRequestConfig) => {
-    const { accessToken } = useUserStore()
-    if (accessToken) request.headers.set('Authorization', accessToken)
+  async (request: InternalAxiosRequestConfig) => {
+    const userStore = useUserStore()
+    if (userStore.accessToken) {
+      // Phase 3: token 过期则通过 Logto SDK 刷新（单飞，见 config/logto.ts ensureFreshToken）
+      const fresh = await ensureFreshToken().catch(() => userStore.accessToken)
+      request.headers.set('Authorization', `Bearer ${fresh}`)
+    }
 
     if (request.data && !(request.data instanceof FormData) && !request.headers['Content-Type']) {
       request.headers.set('Content-Type', 'application/json')
