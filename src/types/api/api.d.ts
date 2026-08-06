@@ -30,93 +30,97 @@ declare namespace Api {
       limit: number
     }
 
+    /** RPC 分页响应（search_users / search_audit_log 等统一结构） */
+    interface RpcPageResponse<T = any> {
+      total: number
+      limit: number
+      offset: number
+      items: T[]
+    }
+
     /** 启用状态 */
     type EnableStatus = '1' | '2'
   }
 
   /** 认证类型 */
   namespace Auth {
-    /** 登录参数 */
-    interface LoginParams {
-      username: string
-      password: string
-    }
-
-    /** 登录响应 */
-    interface LoginResponse {
-      token: string
-      refresh_token?: string
-    }
-
-    /** 用户信息 */
+    /** 用户信息（get_current_user RPC 返回） */
     interface UserInfo {
       id: string
       username: string
       email: string
       phone: string
-      tenant_id: string
-      dept_id: string
+      tenant_id: string | null
+      tenant_name: string | null
+      dept_id: string | null
+      dept_name: string | null
       is_active: boolean
       roles: string[]
-      permissions?: string[]
       created_at: string
       updated_at: string
     }
+
+    /** 用户 API 权限（get_user_permissions RPC 返回） */
+    interface UserPermissions {
+      user_id: string
+      roles: string[]
+      permissions: Array<{ path: string; method: string }>
+    }
   }
 
-  /** 系统管理 - 用户 */
+  /** 系统管理 */
   namespace SystemManage {
-    /** 用户列表项 (对应 v_user_list) */
+    /** 用户列表项（v_user_list） */
     interface UserListItem {
       id: string
       username: string
       email: string
       phone: string
-      tenant_id: string
-      dept_id: string
-      tenant_name: string
-      dept_name: string
+      tenant_id: string | null
+      dept_id: string | null
+      tenant_name: string | null
+      dept_name: string | null
       is_active: boolean
-      roles: string[]
       created_at: string
       updated_at: string
-      deleted_at?: string
+      deleted_at?: string | null
+      /** 组织成员关系（Logto organization_id 数组） */
+      organizations?: string[]
     }
 
-    /** 用户搜索参数 */
+    /** 用户搜索参数（search_users RPC） */
     interface UserSearchParams {
       query?: string
+      status?: 'active' | 'inactive' | ''
       dept_id?: string
-      status?: string
       offset?: number
       limit?: number
     }
 
-    /** 创建用户参数 */
-    interface CreateUserParams {
-      p_username: string
-      p_password: string
-      p_tenant_id: string
-      p_email?: string
-      p_phone?: string
-      p_dept_id?: string
+    /** 用户-角色镜像（v_user_roles） */
+    interface UserRoleItem {
+      user_id: string
+      username: string
+      email: string
+      role_code: string | null
+      assigned_at: string | null
     }
 
-    /** 角色列表项 (对应 v_role_list) */
+    /** 角色列表项（v_role_list） */
     interface RoleListItem {
       id: string
       role_code: string
       role_name: string
-      description: string
+      tenant_id: string | null
+      tenant_name: string | null
+      description: string | null
       is_active: boolean
-      tenant_id?: string
-      tenant_name?: string
       api_count: number
       menu_count: number
       users_count: number
       created_at: string
       updated_at: string
-      deleted_at?: string
+      deleted_at?: string | null
     }
 
     /** 角色搜索参数 */
@@ -127,67 +131,236 @@ declare namespace Api {
       limit?: number
     }
 
-    /** 角色权限详情 */
+    /** 角色-用户镜像（v_role_users） */
+    interface RoleUserItem {
+      role_code: string
+      role_id: string
+      role_type: string
+      user_id: string | null
+      username: string | null
+    }
+
+    /** 角色权限详情（get_role_permissions RPC） */
     interface RolePermissions {
       role_id: string
       role_code: string
       role_name: string
-      menus: MenuTreeItem[]
+      type: string
       apis: ApiItem[]
+      menus: MenuItem[]
+      api_count: number
+      menu_count: number
     }
 
-    /** 菜单树项 */
+    /** 菜单树项（get_menu_tree_admin / iam_menu） */
     interface MenuTreeItem {
       id: string
-      parent_id: string
-      type: 'directory' | 'menu' | 'button'
+      parent_id: string | null
       name: string
-      path: string
-      component: string
-      title: string
-      icon: string
-      permission_code: string
-      sort_order: number
+      menu_name?: string
+      menu_type?: 'directory' | 'menu' | 'button'
+      perms?: string | null
+      path: string | null
+      component?: string | null
+      icon?: string | null
+      order_num?: number
+      sort_order?: number
+      is_visible?: boolean
       is_active: boolean
+      level?: number
       children?: MenuTreeItem[]
     }
 
-    /** API 项 */
-    interface ApiItem {
+    /** 菜单列表项（v_role_menu_detail 等） */
+    interface MenuItem {
       id: string
-      path: string
-      method: string
-      api_name: string
-      is_active: boolean
+      name?: string
+      menu_name?: string
+      parent_id: string | null
+      path?: string | null
+      icon?: string | null
+      menu_type?: string
+      perms?: string | null
     }
 
-    /** 部门树项 */
+    /** API 权限点（iam_api） */
+    interface ApiItem {
+      id: string
+      api_code: string | null
+      path: string
+      method: string
+      name: string
+      description?: string | null
+      is_active: boolean
+      created_at?: string
+      updated_at?: string
+    }
+
+    /** 部门树项（get_dept_tree / department） */
     interface DeptTreeItem {
       id: string
       dept_name: string
-      parent_id: string
+      tenant_id: string | null
+      parent_id: string | null
       sort_order: number
       is_active: boolean
+      level?: number
+      path?: string
+      user_count?: number
       children?: DeptTreeItem[]
     }
 
-    /** 更新角色权限参数 */
-    interface UpdateRolePermissionsParams {
-      p_role_id: string
-      p_menu_ids: string[]
-      p_api_ids: string[]
+    /** 岗位树项（rpc_get_position_tree） */
+    interface PositionTreeItem {
+      id: string
+      parent_id: string | null
+      pos_name: string
+      pos_code: string | null
+      sort_no: number
+      status: boolean
+      depth?: number
+      path_name?: string
+      children?: PositionTreeItem[]
     }
 
-    /** 分配角色参数 */
-    interface AssignRoleParams {
-      p_user_id: string
-      p_role_id: string
+    /** 字典类型（dict_type / v_dict_list） */
+    interface DictTypeItem {
+      id: string
+      tenant_id: string | null
+      dict_name: string
+      dict_label: string
+      status: boolean
+      sort_no: number
+      remark?: string | null
+      items?: DictDataItem[]
+      created_at?: string
+      updated_at?: string
     }
 
-    /** 批量分配角色参数 */
-    interface BatchAssignRolesParams {
-      p_user_id: string
-      p_role_ids: string[]
+    /** 字典数据项（dict_data） */
+    interface DictDataItem {
+      id: string
+      tenant_id: string | null
+      dict_name: string
+      item_label: string
+      item_value: string
+      item_type: string
+      is_default: boolean
+      sort_no: number
+      status: boolean
+      remark?: string | null
+      created_at?: string
+      updated_at?: string
+    }
+
+    /** 租户列表项（rpc_list_tenants） */
+    interface TenantListItem {
+      id: string
+      name: string
+      description: string
+      created_at: string
+      member_count: number
+    }
+
+    /** 租户成员（rpc_list_tenant_members） */
+    interface TenantMemberItem {
+      user_id: string
+      username: string
+      email: string
+      phone: string
+      name: string
+      avatar: string
+      is_active: boolean
+      joined_at: string
+    }
+
+    /** 登录日志（rpc_search_login_logs / v_login_log） */
+    interface LoginLogItem {
+      id: number
+      tenant_id: string | null
+      user_id: string
+      username: string | null
+      login_type: string
+      result: string
+      fail_reason: string | null
+      ip: string | null
+      user_agent: string | null
+      region: string | null
+      logto_event: string | null
+      created_at: string
+    }
+
+    /** 审计日志（v_audit_log_detail） */
+    interface AuditLogItem {
+      id: string
+      table_name: string
+      operation: string
+      old_data: any
+      new_data: any
+      user_id: string
+      username: string | null
+      tenant_id: string | null
+      tenant_name: string | null
+      created_at: string
+    }
+
+    /** 系统统计（v_system_stats） */
+    interface SystemStats {
+      total_tenants: number
+      active_users: number
+      total_users: number
+      total_roles: number
+      total_departments: number
+      total_menus: number
+      total_apis: number
+      stats_time: string
+    }
+
+    /** 实时统计（v_system_stats_realtime） */
+    interface SystemStatsRealtime {
+      online_users: number | null
+      blacklisted_tokens: number | null
+      last_cleanup_time: string | null
+      audit_24h: number
+      stats_time: string
+    }
+
+    /** pg_cron 任务（rpc_list_cron_jobs） */
+    interface CronJobItem {
+      jobid: number
+      jobname: string
+      schedule: string
+      command: string
+      nodename: string
+      nodeport: number
+      database: string
+      username: string
+      active: boolean
+    }
+
+    /** pg_cron 运行历史（rpc_list_cron_job_runs） */
+    interface CronJobRunItem {
+      runid: number
+      jobid: number
+      status: string
+      return_message: string | null
+      start_time: string
+      end_time: string | null
+    }
+
+    /** 用户资料（rpc_get_user_profile → user_profile） */
+    interface UserProfile {
+      user_id: string
+      tenant_id: string | null
+      dept_id: string | null
+      nickname?: string | null
+      avatar?: string | null
+      gender?: string | null
+      birthday?: string | null
+      remark?: string | null
+      created_at?: string
+      updated_at?: string
+      deleted_at?: string | null
     }
   }
 }

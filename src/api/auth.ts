@@ -1,5 +1,5 @@
 /**
- * 认证 API（Phase 3: Logto OIDC SDK 替代 Casdoor PKCE）
+ * 认证 API（Logto OIDC + PostgREST）
  *
  * 认证方式：Logto OIDC 签发 JWT
  * - 登录：Logto SDK signIn() → 回调 handleSignInCallback()
@@ -8,7 +8,7 @@
  */
 import { callRpc } from '@/utils/http/postgrest'
 
-/** JIT 兜底建档（D2: 登录后确保 mirror/profile 存在，返回用户 UUID） */
+/** JIT 兜底建档（登录后确保 mirror/profile 存在，返回用户 id） */
 export function fetchEnsureUser() {
   return callRpc<string>('ensure_user', {})
 }
@@ -18,17 +18,22 @@ export function fetchGetUserInfo() {
   return callRpc<Api.Auth.UserInfo>('get_current_user')
 }
 
-/** 用户登出（将 JWT jti 加入黑名单） */
-export function fetchLogout() {
-  return callRpc('logout')
+/** 获取当前用户 API 权限列表（casbin 语义：path/method） */
+export function fetchGetUserPermissions() {
+  return callRpc<Api.Auth.UserPermissions>('get_user_permissions')
 }
 
-/** 获取当前用户菜单树 */
+/** 获取当前用户菜单树（后端扁平列表：{id,parent_id,name,path,meta}） */
 export function fetchGetUserMenu() {
   return callRpc<Api.SystemManage.MenuTreeItem[]>('get_user_menu')
 }
 
-/** 获取当前用户 API 权限列表 */
-export function fetchGetUserPermissions() {
-  return callRpc<string[]>('get_user_permissions')
+/** 同步当前用户角色镜像到 user_role 表（JIT 覆盖，幂等） */
+export function fetchSyncUserRoles() {
+  return callRpc<{ ok: boolean; user_id: string; roles: string[] }>('rpc_sync_user_roles', {})
+}
+
+/** 获取所有公开配置（前端初始化） */
+export function fetchGetAllPublicConfigs() {
+  return callRpc<Record<string, string>>('get_all_public_configs')
 }
