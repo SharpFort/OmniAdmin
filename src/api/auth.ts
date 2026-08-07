@@ -1,39 +1,45 @@
 /**
- * 认证 API（Logto OIDC + PostgREST）
+ * 认证 API（docs/1.前端对齐后端方案-修订版.md §2.2）
  *
- * 认证方式：Logto OIDC 签发 JWT
- * - 登录：Logto SDK signIn() → 回调 handleSignInCallback()
- * - token 管理：Logto SDK getAccessToken()（内置 PKCE + 刷新）
- * - 后续请求：Authorization 头携带 Bearer token（PostgREST 从 JWT claims 提取用户）
+ * 认证方式：Logto OIDC 全托管
+ * - 登录/注册/忘记密码/登出：Logto SDK（config/logto.ts）——前端不实现任何认证表单
+ * - token 管理：Logto SDK getAccessToken()（内置 PKCE + 静默刷新）
+ * - 本模块仅保留 PostgREST 侧数据接口：
+ *   ensureUser（JIT 建档，035 起顺带 user_role 镜像全量覆盖，无需任何同步 RPC）
+ *   getCurrentUser（userStore 数据源）、getAllPublicConfigs / getConfig（登录初始化）
  */
-import { callRpc } from '@/utils/http/postgrest'
+import { postRpc } from './request'
 
-/** JIT 兜底建档（登录后确保 mirror/profile 存在，返回用户 id） */
-export function fetchEnsureUser() {
-  return callRpc<string>('ensure_user', {})
+/** JIT 兜底建档（登录回调后调用；返回 sub；顺带 user_role 分配镜像覆盖） */
+export function ensureUser() {
+  return postRpc<string>('ensure_user', {})
 }
 
-/** 获取当前登录用户信息（从 JWT claims 提取） */
-export function fetchGetUserInfo() {
-  return callRpc<Api.Auth.UserInfo>('get_current_user')
+/** 获取当前登录用户信息（含 roles，来自 JWT claims） */
+export function getCurrentUser() {
+  return postRpc<Api.Auth.UserInfo>('get_current_user', {})
 }
 
-/** 获取当前用户 API 权限列表（casbin 语义：path/method） */
-export function fetchGetUserPermissions() {
-  return callRpc<Api.Auth.UserPermissions>('get_user_permissions')
+/** 获取全部公开配置（登录初始化） */
+export function getAllPublicConfigs() {
+  return postRpc<Record<string, string>>('get_all_public_configs', {})
 }
 
-/** 获取当前用户菜单树（后端扁平列表：{id,parent_id,name,path,meta}） */
-export function fetchGetUserMenu() {
-  return callRpc<Api.SystemManage.MenuTreeItem[]>('get_user_menu')
+/** 获取单个公开配置 */
+export function getConfig(configKey: string) {
+  return postRpc<{
+    config_key: string
+    config_value: string
+    config_type: string
+  } | null>('get_config', { p_config_key: configKey })
 }
 
-/** 同步当前用户角色镜像到 user_role 表（JIT 覆盖，幂等） */
-export function fetchSyncUserRoles() {
-  return callRpc<{ ok: boolean; user_id: string; roles: string[] }>('rpc_sync_user_roles', {})
-}
+// ============================================================================
+// 兼容层（@deprecated —— Phase 3 回调/守卫迁移后移除）
+// ============================================================================
 
-/** 获取所有公开配置（前端初始化） */
-export function fetchGetAllPublicConfigs() {
-  return callRpc<Record<string, string>>('get_all_public_configs')
-}
+/** @deprecated 使用 ensureUser */
+export const fetchEnsureUser = ensureUser
+
+/** @deprecated 使用 getCurrentUser */
+export const fetchGetUserInfo = getCurrentUser

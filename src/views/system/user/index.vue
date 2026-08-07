@@ -80,7 +80,6 @@
     data,
     loading,
     pagination,
-    getData,
     refresh,
     handleSizeChange,
     handleCurrentChange,

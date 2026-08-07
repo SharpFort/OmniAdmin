@@ -130,7 +130,7 @@
           }),
           h(ArtButtonTable, {
             type: 'delete',
-            onClick: () => handleDeleteMenu(row)
+            onClick: () => handleDeleteMenu()
           })
         ])
     }
@@ -174,7 +174,7 @@
     dialogVisible.value = true
   }
 
-  const handleDeleteMenu = async (row: Api.SystemManage.MenuTreeItem): Promise<void> => {
+  const handleDeleteMenu = async (): Promise<void> => {
     try {
       await ElMessageBox.confirm('确定要删除该菜单吗？删除后无法恢复', '提示', {
         confirmButtonText: '确定',

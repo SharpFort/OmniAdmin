@@ -18,7 +18,7 @@
         @check="handleTreeCheck"
       >
         <template #default="{ data }">
-          <div style="display: flex; align-items: center; gap: 8px">
+          <div style="display: flex; gap: 8px; align-items: center">
             <span v-if="data.icon" class="menu-icon" v-html="data.icon"></span>
             <span>{{ data.title || data.name }}</span>
             <ElTag v-if="data.type === 'directory'" size="small" type="info">目录</ElTag>
@@ -127,7 +127,7 @@
       ElMessage.success('权限保存成功')
       emit('success')
       handleClose()
-    } catch (error) {
+    } catch {
       ElMessage.error('保存失败')
     }
   }
