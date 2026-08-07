@@ -300,7 +300,15 @@
       "menu3": "菜单3",
       "menu31": "菜单3-1",
       "menu32": "菜单3-2",
-      "menu321": "菜单3-2-1"
+      "menu321": "菜单3-2-1",
+      "api": "API 管理",
+      "dept": "部门管理",
+      "position": "岗位管理",
+      "dict": "字典管理",
+      "tenant": "租户管理",
+      "loginLog": "登录日志",
+      "auditLog": "审计日志",
+      "monitor": "系统监控"
     },
     "safeguard": {
       "title": "运维管理",

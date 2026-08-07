@@ -1,5 +1,14 @@
 import { AppRouteRecord } from '@/types/router'
 
+/**
+ * 系统管理路由（frontend 模式本地路由全量）
+ *
+ * roles 对齐后端 PG 角色（init/02-schemas.sql）：role_super_admin / tenant_admin
+ * 可见性矩阵（docs/1.前端对齐后端方案-修订版.md §2.5 tenant_admin 按钮矩阵）：
+ * - login-log 仅超管（sys:login-log:list 仅超管绑定）
+ * - menu/api/role：tenant_admin 只读（页面可见、按钮经 v-perm 全隐藏）
+ * - 其余页面两角色可见；按钮级权限由 Phase 6 v-perm（后端权限码）控制
+ */
 export const systemRoutes: AppRouteRecord = {
   path: '/system',
   name: 'System',
@@ -7,7 +16,7 @@ export const systemRoutes: AppRouteRecord = {
   meta: {
     title: 'menus.system.title',
     icon: 'ri:user-3-line',
-    roles: ['R_SUPER', 'R_ADMIN']
+    roles: ['role_super_admin', 'tenant_admin']
   },
   children: [
     {
@@ -17,7 +26,7 @@ export const systemRoutes: AppRouteRecord = {
       meta: {
         title: 'menus.system.user',
         keepAlive: true,
-        roles: ['R_SUPER', 'R_ADMIN']
+        roles: ['role_super_admin', 'tenant_admin']
       }
     },
     {
@@ -27,7 +36,7 @@ export const systemRoutes: AppRouteRecord = {
       meta: {
         title: 'menus.system.role',
         keepAlive: true,
-        roles: ['R_SUPER']
+        roles: ['role_super_admin', 'tenant_admin']
       }
     },
     {
@@ -48,12 +57,92 @@ export const systemRoutes: AppRouteRecord = {
       meta: {
         title: 'menus.system.menu',
         keepAlive: true,
-        roles: ['R_SUPER'],
+        roles: ['role_super_admin', 'tenant_admin'],
         authList: [
           { title: '新增', authMark: 'add' },
           { title: '编辑', authMark: 'edit' },
           { title: '删除', authMark: 'delete' }
         ]
+      }
+    },
+    {
+      path: 'api',
+      name: 'Api',
+      component: '/system/api',
+      meta: {
+        title: 'menus.system.api',
+        keepAlive: true,
+        roles: ['role_super_admin', 'tenant_admin']
+      }
+    },
+    {
+      path: 'dept',
+      name: 'Dept',
+      component: '/system/dept',
+      meta: {
+        title: 'menus.system.dept',
+        keepAlive: true,
+        roles: ['role_super_admin', 'tenant_admin']
+      }
+    },
+    {
+      path: 'position',
+      name: 'Position',
+      component: '/system/position',
+      meta: {
+        title: 'menus.system.position',
+        keepAlive: true,
+        roles: ['role_super_admin', 'tenant_admin']
+      }
+    },
+    {
+      path: 'dict',
+      name: 'Dict',
+      component: '/system/dict',
+      meta: {
+        title: 'menus.system.dict',
+        keepAlive: true,
+        roles: ['role_super_admin', 'tenant_admin']
+      }
+    },
+    {
+      path: 'tenant',
+      name: 'Tenant',
+      component: '/system/tenant',
+      meta: {
+        title: 'menus.system.tenant',
+        keepAlive: true,
+        roles: ['role_super_admin', 'tenant_admin']
+      }
+    },
+    {
+      path: 'login-log',
+      name: 'LoginLog',
+      component: '/system/login-log',
+      meta: {
+        title: 'menus.system.loginLog',
+        keepAlive: true,
+        roles: ['role_super_admin']
+      }
+    },
+    {
+      path: 'audit-log',
+      name: 'AuditLog',
+      component: '/system/audit-log',
+      meta: {
+        title: 'menus.system.auditLog',
+        keepAlive: true,
+        roles: ['role_super_admin', 'tenant_admin']
+      }
+    },
+    {
+      path: 'monitor',
+      name: 'Monitor',
+      component: '/system/monitor',
+      meta: {
+        title: 'menus.system.monitor',
+        keepAlive: true,
+        roles: ['role_super_admin', 'tenant_admin']
       }
     }
   ]

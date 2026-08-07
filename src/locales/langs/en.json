@@ -300,7 +300,15 @@
       "menu3": "Menu 3",
       "menu31": "Menu 3-1",
       "menu32": "Menu 3-2",
-      "menu321": "Menu 3-2-1"
+      "menu321": "Menu 3-2-1",
+      "api": "API Management",
+      "dept": "Departments",
+      "position": "Positions",
+      "dict": "Dictionaries",
+      "tenant": "Tenants",
+      "loginLog": "Login Logs",
+      "auditLog": "Audit Logs",
+      "monitor": "System Monitor"
     },
     "safeguard": {
       "title": "Safeguard",

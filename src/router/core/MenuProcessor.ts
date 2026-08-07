@@ -10,10 +10,25 @@
 import type { AppRouteRecord } from '@/types/router'
 import { useUserStore } from '@/store/modules/user'
 import { useAppMode } from '@/hooks/core/useAppMode'
-import { fetchGetMenuTree } from '@/api/system-manage'
+import { getUserMenu } from '@/api/system-manage'
 import { asyncRoutes } from '../routes/asyncRoutes'
 import { RoutesAlias } from '../routesAlias'
 import { formatMenuTitle } from '@/utils'
+
+/** §2.4 component 兜底映射表（get_user_menu.component 为空时按 path 最后一段映射） */
+const COMPONENT_FALLBACK_MAP: Record<string, string> = {
+  user: '/system/user',
+  role: '/system/role',
+  menu: '/system/menu',
+  api: '/system/api',
+  dept: '/system/dept',
+  position: '/system/position',
+  dict: '/system/dict',
+  tenant: '/system/tenant',
+  'login-log': '/system/login-log',
+  'audit-log': '/system/audit-log',
+  monitor: '/system/monitor'
+}
 
 export class MenuProcessor {
   /**
@@ -54,27 +69,100 @@ export class MenuProcessor {
   }
 
   /**
-   * 处理后端控制模式的菜单
+   * 处理后端控制模式的菜单（§2.4；VITE_ACCESS_MODE=backend 时启用）
+   *
+   * 数据源：get_user_menu（035 起含 menu_type/perms/is_visible/component）
+   * - 扁平列表 → 树：两遍构建（先建全量节点 Map 再统一挂载，不假设「父先于子」；
+   *   后端已按 order_num 全局排序，数组顺序即层级内顺序）
+   * - component 直用后端值（规范化前导斜杠/去掉尾部 /index）+ 映射表兜底
+   * - menu_type=button 过滤（按钮项是权限标记，不注册路由）
+   * - menu_type=link / path 为 URL → meta.link 外链处理（不 addRoute）
+   * - is_visible=false → meta.isHide（注册但不显示在菜单栏，URL 可直达）
+   * - 空树/调用失败 → fallback 本地 asyncRoutes
    */
   private async processBackendMenu(): Promise<AppRouteRecord[]> {
-    const list = await fetchGetMenuTree()
-    return this.filterEmptyMenus(this.convertMenuTreeToRoutes(list))
+    let items: Api.Menu.MenuRouteItem[]
+    try {
+      items = await getUserMenu()
+    } catch (error) {
+      console.warn('[MenuProcessor] get_user_menu 获取失败，回退本地 asyncRoutes:', error)
+      items = []
+    }
+
+    if (!Array.isArray(items) || items.length === 0) {
+      return this.fallbackToLocalRoutes()
+    }
+
+    // 1. 过滤 button 类型（权限标记不入路由）
+    const routeItems = items.filter((item) => item.menu_type !== 'button')
+
+    // 2. 两遍构建：先全量节点 Map，再统一挂载（子节点可能先于父节点出现）
+    const nodeMap = new Map<
+      string,
+      Api.Menu.MenuRouteItem & { children?: Api.Menu.MenuRouteItem[] }
+    >()
+    routeItems.forEach((item) => {
+      nodeMap.set(item.id, { ...item })
+    })
+
+    const roots: Array<Api.Menu.MenuRouteItem & { children?: Api.Menu.MenuRouteItem[] }> = []
+    routeItems.forEach((item) => {
+      if (item.parent_id && nodeMap.has(item.parent_id)) {
+        const parent = nodeMap.get(item.parent_id)!
+        parent.children = parent.children || []
+        parent.children.push(item)
+      } else {
+        roots.push(item)
+      }
+    })
+
+    return this.filterEmptyMenus(this.convertMenuTreeToRoutes(roots))
   }
 
-  private convertMenuTreeToRoutes(items: Api.SystemManage.MenuTreeItem[]): AppRouteRecord[] {
-    return items.map((item) => ({
-      path: item.path,
-      name: item.name,
-      component: item.component,
-      meta: {
-        title: item.title,
-        icon: item.icon,
-        isHide: false,
-        isHideTab: false,
-        keepAlive: false
-      },
-      children: item.children ? this.convertMenuTreeToRoutes(item.children) : undefined
-    }))
+  /** 空树/失败回退：本地 asyncRoutes（按角色过滤） */
+  private fallbackToLocalRoutes(): AppRouteRecord[] {
+    const userStore = useUserStore()
+    const roles = userStore.info?.roles
+    let menuList = [...asyncRoutes]
+    if (roles && roles.length > 0) {
+      menuList = this.filterMenuByRoles(menuList, roles)
+    }
+    return this.filterEmptyMenus(menuList)
+  }
+
+  /** 规范化后端 component 值（'system/user/index' → '/system/user'）；空值走兜底映射表 */
+  private normalizeComponent(component: string | null, path: string | null): string | undefined {
+    if (component && component.trim()) {
+      const trimmed = component.trim()
+      const normalized = trimmed.startsWith('/') ? trimmed : `/${trimmed}`
+      return normalized.replace(/\/index$/, '')
+    }
+    if (!path) return undefined
+    const lastSegment = path.split('/').filter(Boolean).pop() || ''
+    return COMPONENT_FALLBACK_MAP[lastSegment]
+  }
+
+  private convertMenuTreeToRoutes(
+    items: Array<Api.Menu.MenuRouteItem & { children?: Api.Menu.MenuRouteItem[] }>
+  ): AppRouteRecord[] {
+    return items.map((item) => {
+      const isExternalLink = item.menu_type === 'link' || /^https?:\/\//.test(item.path || '')
+
+      return {
+        path: item.path || item.name,
+        name: item.name,
+        component: isExternalLink ? undefined : this.normalizeComponent(item.component, item.path),
+        meta: {
+          title: item.meta?.title || item.name,
+          icon: item.meta?.icon || undefined,
+          link: isExternalLink ? item.path || undefined : undefined,
+          isHide: item.is_visible === false,
+          isHideTab: false,
+          keepAlive: false
+        },
+        children: item.children?.length ? this.convertMenuTreeToRoutes(item.children) : undefined
+      }
+    })
   }
 
   /**
