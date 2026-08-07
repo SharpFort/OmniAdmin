@@ -91,6 +91,17 @@ export const useUserStore = defineStore(
     }
 
     /**
+     * 刷新用户信息（重新拉取 get_current_user 并更新 store）
+     * 个人中心资料保存后调用，保证侧栏/头像即时刷新
+     */
+    const refreshUserInfo = async () => {
+      const { getCurrentUser } = await import('@/api/auth')
+      const data = await getCurrentUser()
+      info.value = data
+      return data
+    }
+
+    /**
      * 设置语言
      * @param lang 语言枚举值
      */
@@ -217,6 +228,7 @@ export const useUserStore = defineStore(
       getWorktabState,
       setUserInfo,
       setLoginStatus,
+      refreshUserInfo,
       setLanguage,
       setSearchHistory,
       setLockStatus,

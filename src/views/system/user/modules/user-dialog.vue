@@ -1,127 +1,139 @@
+<!-- 用户资料编辑弹窗（rpc_get_user_profile / rpc_update_user_profile） -->
 <template>
   <ElDialog
-    v-model="dialogVisible"
-    :title="dialogType === 'add' ? '添加用户' : '编辑用户'"
-    width="500px"
-    align-center
+    :model-value="visible"
+    :title="`编辑资料 - ${username}`"
+    width="560px"
+    @update:model-value="emit('update:visible', $event)"
+    @closed="handleClosed"
   >
-    <ElForm ref="formRef" :model="formData" :rules="rules" label-width="100px">
-      <ElFormItem label="用户名" prop="username">
-        <ElInput v-model="formData.username" placeholder="请输入用户名" />
-      </ElFormItem>
-      <ElFormItem label="邮箱" prop="email">
-        <ElInput v-model="formData.email" placeholder="请输入邮箱" />
-      </ElFormItem>
-      <ElFormItem label="电话" prop="phone">
-        <ElInput v-model="formData.phone" placeholder="请输入电话" />
-      </ElFormItem>
-      <ElFormItem label="密码" prop="password" v-if="dialogType === 'add'">
-        <ElInput
-          v-model="formData.password"
-          type="password"
-          placeholder="请输入密码"
-          show-password
-        />
-      </ElFormItem>
-      <ElFormItem label="租户" prop="tenant_id">
-        <ElInput v-model="formData.tenant_id" placeholder="请输入租户ID" />
-      </ElFormItem>
-      <ElFormItem label="部门" prop="dept_id">
-        <ElInput v-model="formData.dept_id" placeholder="请输入部门ID" />
-      </ElFormItem>
-    </ElForm>
+    <div v-loading="loading">
+      <ElAlert
+        v-if="!hasEditableFields"
+        type="info"
+        :closable="false"
+        show-icon
+        title="该用户暂无资料字段可编辑（user_profile 未初始化），请先确认后端资料表结构"
+        class="mb-3"
+      />
+      <ElForm ref="formRef" :model="form" label-width="100px">
+        <ElFormItem
+          v-for="field in editableFields"
+          :key="field"
+          :label="fieldLabel(field)"
+          :prop="field"
+        >
+          <ElInput v-model="form[field]" :placeholder="`请输入${fieldLabel(field)}`" clearable />
+        </ElFormItem>
+      </ElForm>
+    </div>
     <template #footer>
-      <div class="dialog-footer">
-        <ElButton @click="dialogVisible = false">取消</ElButton>
-        <ElButton type="primary" @click="handleSubmit">提交</ElButton>
-      </div>
+      <ElButton @click="emit('update:visible', false)">取消</ElButton>
+      <ElButton type="primary" :loading="saving" @click="handleSave">保存</ElButton>
     </template>
   </ElDialog>
 </template>
 
 <script setup lang="ts">
-  import type { FormInstance, FormRules } from 'element-plus'
+  import { getUserProfile, updateUserProfile } from '@/api/system-manage'
+  import { ElMessage } from 'element-plus'
+  import type { FormInstance } from 'element-plus'
 
-  interface Props {
+  const props = defineProps<{
     visible: boolean
-    type: string
-    userData?: Partial<Api.SystemManage.UserListItem>
-  }
-
-  interface Emits {
+    userId: string
+  }>()
+  const emit = defineEmits<{
     (e: 'update:visible', value: boolean): void
     (e: 'submit'): void
-  }
+  }>()
 
-  const props = defineProps<Props>()
-  const emit = defineEmits<Emits>()
+  // user_profile 系统列（白名单排除；§2.5：tenant_id/dept_id/时间戳/审计列不可改）
+  const EXCLUDE_COLUMNS = new Set([
+    'user_id',
+    'tenant_id',
+    'dept_id',
+    'created_at',
+    'updated_at',
+    'deleted_at',
+    'created_by',
+    'updated_by',
+    'deleted_by'
+  ])
 
-  const dialogVisible = computed({
-    get: () => props.visible,
-    set: (value) => emit('update:visible', value)
-  })
-
-  const dialogType = computed(() => props.type)
+  const loading = ref(false)
+  const saving = ref(false)
   const formRef = ref<FormInstance>()
+  const form = reactive<Record<string, any>>({})
+  const editableFields = ref<string[]>([])
+  const username = ref('')
 
-  const formData = reactive({
-    username: '',
-    email: '',
-    phone: '',
-    password: '',
-    tenant_id: '',
-    dept_id: ''
-  })
+  const hasEditableFields = computed(() => editableFields.value.length > 0)
 
-  const rules: FormRules = {
-    username: [
-      { required: true, message: '请输入用户名', trigger: 'blur' },
-      { min: 2, max: 50, message: '长度在 2 到 50 个字符', trigger: 'blur' }
-    ],
-    email: [{ type: 'email', message: '请输入正确的邮箱格式', trigger: 'blur' }],
-    password: [
-      { required: true, message: '请输入密码', trigger: 'blur' },
-      { min: 6, message: '密码至少 6 个字符', trigger: 'blur' }
-    ],
-    tenant_id: [{ required: true, message: '请输入租户ID', trigger: 'blur' }]
+  const fieldLabel = (field: string) => {
+    const labelMap: Record<string, string> = {
+      nickname: '昵称',
+      avatar: '头像',
+      gender: '性别',
+      birthday: '生日',
+      signature: '个性签名',
+      remark: '备注'
+    }
+    return labelMap[field] || field
   }
 
-  const initFormData = () => {
-    const isEdit = props.type === 'edit' && props.userData
-    const row = props.userData
-
-    Object.assign(formData, {
-      username: isEdit && row ? row.username || '' : '',
-      email: isEdit && row ? row.email || '' : '',
-      phone: isEdit && row ? row.phone || '' : '',
-      password: '',
-      tenant_id: isEdit && row ? row.tenant_id || '' : '',
-      dept_id: isEdit && row ? row.dept_id || '' : ''
-    })
+  const loadProfile = async () => {
+    if (!props.userId) return
+    loading.value = true
+    try {
+      const profile = await getUserProfile(props.userId)
+      username.value = String(profile.username ?? '')
+      // 动态业务列：profile 返回键 − 系统排除列（后端白名单 = 全列 − 9 排除列）
+      const keys = Object.keys(profile).filter((key) => !EXCLUDE_COLUMNS.has(key))
+      editableFields.value = keys
+      keys.forEach((key) => {
+        form[key] = profile[key] == null ? '' : String(profile[key])
+      })
+    } catch (error) {
+      console.error('获取用户资料失败:', error)
+      editableFields.value = []
+    } finally {
+      loading.value = false
+    }
   }
 
   watch(
-    () => [props.visible, props.type, props.userData],
-    ([visible]) => {
-      if (visible) {
-        initFormData()
-        nextTick(() => {
-          formRef.value?.clearValidate()
-        })
-      }
-    },
-    { immediate: true }
+    () => props.visible,
+    (val) => {
+      if (val) loadProfile()
+    }
   )
 
-  const handleSubmit = async () => {
-    if (!formRef.value) return
+  const handleClosed = () => {
+    Object.keys(form).forEach((key) => delete form[key])
+    editableFields.value = []
+    username.value = ''
+  }
 
-    await formRef.value.validate((valid) => {
-      if (valid) {
-        ElMessage.success(dialogType.value === 'add' ? '添加成功' : '更新成功')
-        dialogVisible.value = false
-        emit('submit')
-      }
-    })
+  const handleSave = async () => {
+    if (!props.userId || editableFields.value.length === 0) return
+    saving.value = true
+    try {
+      // 只提交已填写的字段（空字符串不提交，避免误清空后端字段）
+      const updates: Record<string, unknown> = {}
+      editableFields.value.forEach((key) => {
+        if (form[key] !== '' && form[key] != null) {
+          updates[key] = form[key]
+        }
+      })
+      await updateUserProfile(props.userId, updates)
+      ElMessage.success('保存成功')
+      emit('update:visible', false)
+      emit('submit')
+    } catch (error) {
+      console.error('保存用户资料失败:', error)
+    } finally {
+      saving.value = false
+    }
   }
 </script>

@@ -35,7 +35,7 @@
 
   const statusOptions = [
     { label: '启用', value: 'true' },
-    { label: '禁用', value: 'false' }
+    { label: '停用', value: 'false' }
   ]
 
   const formItems = computed(() => [
@@ -43,7 +43,7 @@
       label: '角色名称',
       key: 'query',
       type: 'input',
-      placeholder: '请输入角色名称或编码',
+      placeholder: '请输入角色名称搜索',
       clearable: true
     },
     {

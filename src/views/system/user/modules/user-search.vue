@@ -11,6 +11,8 @@
 </template>
 
 <script setup lang="ts">
+  import { getDeptTree } from '@/api/system-manage'
+
   interface Props {
     modelValue: {
       query: string
@@ -35,9 +37,25 @@
   const rules = {}
 
   const statusOptions = [
-    { label: '启用', value: 'true' },
-    { label: '禁用', value: 'false' }
+    { label: '启用', value: 'active' },
+    { label: '禁用', value: 'inactive' }
   ]
+
+  // 部门选项（get_dept_tree 扁平列表，path 展示层级）
+  const deptOptions = ref<Array<{ label: string; value: string }>>([])
+
+  onMounted(async () => {
+    try {
+      const tree = await getDeptTree()
+      deptOptions.value = tree.map((item) => ({
+        label: item.path || item.dept_name,
+        value: item.id
+      }))
+    } catch (error) {
+      console.warn('加载部门选项失败:', error)
+      deptOptions.value = []
+    }
+  })
 
   const formItems = computed(() => [
     {
@@ -48,12 +66,24 @@
       clearable: true
     },
     {
+      label: '部门',
+      key: 'dept_id',
+      type: 'select',
+      props: {
+        placeholder: '请选择部门',
+        options: deptOptions.value,
+        filterable: true,
+        clearable: true
+      }
+    },
+    {
       label: '状态',
       key: 'status',
       type: 'select',
       props: {
         placeholder: '请选择状态',
-        options: statusOptions
+        options: statusOptions,
+        clearable: true
       }
     }
   ])

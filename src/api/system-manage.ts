@@ -373,6 +373,32 @@ export function assignUserPositions(params: {
 }
 
 // ============================================================================
+// 登录日志
+// ============================================================================
+
+/** 登录日志分页查询（rpc_search_login_logs；🔐 sys:login-log:list 仅超管绑定；
+ * 无关键词搜索——p_user_id 精确匹配 + 结果 + 时间范围；上限 100） */
+export function searchLoginLogs(
+  params: {
+    user_id?: string | null
+    result?: string | null
+    from?: string | null
+    to?: string | null
+    limit?: number
+    offset?: number
+  } = {}
+) {
+  return postRpc<Api.Common.PageResult<Api.SystemManage.LoginLog>>('rpc_search_login_logs', {
+    p_user_id: params.user_id ?? null,
+    p_result: params.result ?? null,
+    p_from: params.from ?? null,
+    p_to: params.to ?? null,
+    p_limit: params.limit ?? 50,
+    p_offset: params.offset ?? 0
+  })
+}
+
+// ============================================================================
 // 配置
 // ============================================================================
 
