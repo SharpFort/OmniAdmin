@@ -64,6 +64,7 @@
   import { useRouter } from 'vue-router'
   import { ElMessageBox } from 'element-plus'
   import { useUserStore } from '@/store/modules/user'
+  import { signOut } from '@/config/logto'
   import { WEB_LINKS } from '@/utils/constants'
   import { mittBus } from '@/utils/sys'
 
@@ -116,7 +117,8 @@
         cancelButtonText: t('common.cancel'),
         customClass: 'login-out-dialog'
       }).then(() => {
-        userStore.logOut()
+        // Logto 全托管登出：清共享会话 + 回站（postLogoutRedirectUri）+ 本地 userStore 清理
+        signOut()
       })
     }, 200)
   }

@@ -38,6 +38,7 @@
 import type { Router, RouteLocationNormalized, NavigationGuardNext } from 'vue-router'
 import { nextTick } from 'vue'
 import NProgress from 'nprogress'
+import { ElMessage } from 'element-plus'
 import { useSettingStore } from '@/store/modules/setting'
 import { useUserStore } from '@/store/modules/user'
 import { useMenuStore } from '@/store/modules/menu'
@@ -48,7 +49,7 @@ import { staticRoutes } from '../routes/staticRoutes'
 import { loadingService } from '@/utils/ui'
 import { useCommon } from '@/hooks/core/useCommon'
 import { useWorktabStore } from '@/store/modules/worktab'
-import { fetchGetUserInfo } from '@/api/auth'
+import { getCurrentUser } from '@/api/auth'
 import { ApiStatus } from '@/utils/http/status'
 import { isHttpError } from '@/utils/http/error'
 import { RouteRegistry, MenuProcessor, IframeRouteManager, RoutePermissionValidator } from '../core'
@@ -156,6 +157,19 @@ async function handleRouteGuard(
     return
   }
 
+  // 1.5 F5/直链恢复（A-1 基础设施）：已登录但用户信息缺失 → getCurrentUser 重新拉取，失败提示重试
+  if (userStore.isLogin && !userStore.info?.id) {
+    try {
+      await fetchUserInfo()
+    } catch (error) {
+      console.error('[RouteGuard] 恢复用户信息失败:', error)
+      ElMessage.error('用户信息加载失败，请重新登录')
+      userStore.logOut()
+      next({ name: 'Login', query: { redirect: to.fullPath } })
+      return
+    }
+  }
+
   // 2. 检查路由初始化是否已失败（防止死循环）
   if (routeInitFailed) {
     // 已经失败过，直接放行到错误页面，不再重试
@@ -206,6 +220,13 @@ function handleLoginStatus(
   userStore: ReturnType<typeof useUserStore>,
   next: NavigationGuardNext
 ): boolean {
+  // 已登录访问登录页 → 跳首页（登录后不应再看到登录页）
+  if (userStore.isLogin && to.path === RoutesAlias.Login) {
+    const { homePath } = useCommon()
+    next({ path: homePath.value || '/', replace: true })
+    return false
+  }
+
   // 已登录或访问登录页或静态路由，直接放行
   if (userStore.isLogin || to.path === RoutesAlias.Login || isStaticRoute(to.path)) {
     return true
@@ -369,7 +390,7 @@ async function handleDynamicRoutes(
  */
 async function fetchUserInfo(): Promise<void> {
   const userStore = useUserStore()
-  const data = await fetchGetUserInfo()
+  const data = await getCurrentUser()
   userStore.setUserInfo(data)
   // 检查并清理工作台标签页（如果是不同用户登录）
   userStore.checkAndClearWorktabs()

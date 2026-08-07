@@ -1,4 +1,4 @@
-<!-- Logto OAuth 回调页（Phase 3: handleSignInCallback → 存 token → JIT 建档 → 获取用户信息 → 跳转） -->
+<!-- Logto OAuth 回调页（§2.1 定稿四步：① 检测 URL error → 提示+回登录页；② ensureUser JIT 建档（失败重试 1 次）；③ getCurrentUser 填 userStore；④ 跳转登录前页面） -->
 <template>
   <div class="flex items-center justify-center w-full h-screen">
     <div class="text-center">
@@ -14,7 +14,7 @@
   import { ElMessage } from 'element-plus'
   import { useUserStore } from '@/store/modules/user'
   import { useLogto, useHandleSignInCallback } from '@logto/vue'
-  import { fetchEnsureUser, fetchGetUserInfo } from '@/api/auth'
+  import { ensureUser, getCurrentUser } from '@/api/auth'
 
   defineOptions({ name: 'AuthCallback' })
 
@@ -28,7 +28,17 @@
   /** Logto SDK composable：用于获取 token */
   const { getAccessToken } = useLogto()
 
-  /** 登录成功后的处理：存 token → JIT 建档 → 拉用户信息 → 跳转 */
+  /** 回到登录页（携带提示） */
+  const backToLogin = (message?: string) => {
+    if (message) {
+      ElMessage.error(message)
+    }
+    router.replace({ name: 'Login' })
+  }
+
+  /**
+   * 登录成功后的处理：存 token → JIT 建档（重试 1 次）→ 拉用户信息 → 跳转
+   */
   const handleLoginSuccess = async () => {
     if (handled.value) return
     handled.value = true
@@ -43,15 +53,25 @@
         throw new Error('无法获取访问令牌')
       }
 
-      // 1. JIT 兜底建档（PostgREST RPC）
+      // 1. JIT 兜底建档（ensure_user；失败重试 1 次，仍失败提示并回登录页）
       statusText.value = '正在初始化账户...'
-      await fetchEnsureUser().catch((e) => {
-        console.warn('[Callback] ensure_user 失败（可容忍）:', e)
-      })
+      let ensureOk = false
+      for (let attempt = 0; attempt < 2 && !ensureOk; attempt++) {
+        try {
+          await ensureUser()
+          ensureOk = true
+        } catch (e) {
+          if (attempt === 0) {
+            console.warn('[Callback] ensure_user 失败，重试一次:', e)
+          } else {
+            throw e
+          }
+        }
+      }
 
       // 2. 拉取用户信息
       statusText.value = '正在加载用户信息...'
-      const userInfo = await fetchGetUserInfo()
+      const userInfo = await getCurrentUser()
       userStore.setUserInfo(userInfo)
       userStore.setLoginStatus(true)
       userStore.checkAndClearWorktabs()
@@ -64,8 +84,7 @@
       router.replace(redirect)
     } catch (e) {
       console.error('[Callback] 登录后处理失败:', e)
-      ElMessage.error(e instanceof Error ? e.message : '登录失败，请重试')
-      router.replace({ name: 'Login' })
+      backToLogin(e instanceof Error ? e.message : '登录失败，请重试')
     }
   }
 
@@ -76,13 +95,29 @@
     await handleLoginSuccess()
   })
 
-  // 监听回调节错误
+  // 监听回调节错误（用户取消登录/注册失败/consent 拒绝等 → D-2 场景）
   watch(error, (err) => {
     if (err && !handled.value) {
       handled.value = true
       console.error('[Callback] Logto 回调处理失败:', err)
-      ElMessage.error(err.message || '登录失败，请重试')
-      router.replace({ name: 'Login' })
+      const errorDescription = router.currentRoute.value.query.error_description
+      const message =
+        (typeof errorDescription === 'string' && errorDescription) ||
+        err.message ||
+        '登录未完成，请重试'
+      backToLogin(message)
+    }
+  })
+
+  // 兜底：URL 直接带 error 参数（useHandleSignInCallback 未触发 error 时）
+  onMounted(() => {
+    const { error: urlError, error_description: urlErrorDescription } =
+      router.currentRoute.value.query
+    if (typeof urlError === 'string' && urlError && !handled.value) {
+      handled.value = true
+      backToLogin(
+        typeof urlErrorDescription === 'string' ? urlErrorDescription : '登录未完成，请重试'
+      )
     }
   })
 </script>
