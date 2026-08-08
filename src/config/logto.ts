@@ -15,7 +15,17 @@
  *   - 两个 LogtoClient 实例共享同一浏览器存储（sessionStorage）；token 状态自动同步
  */
 import LogtoClient, { type LogtoConfig, UserScope } from '@logto/browser'
+import {
+  BrowserStorage,
+  generateCodeChallenge,
+  generateCodeVerifier,
+  generateState
+} from '@logto/browser'
+import BaseLogtoClient, { createRequester, type ClientAdapter } from '@logto/client'
 import { useUserStore } from '@/store/modules/user'
+
+/** Logto API resource（⚠️ 必须配置：token 交换带 resource 才返回 JWT，否则 opaque 非 JWT——PostgREST 报 PGRST301） */
+export const API_RESOURCE = import.meta.env.VITE_LOGTO_RESOURCE || 'https://default.logto.app/api'
 
 /** Logto 应用配置（同时用于本模块单例和 main.ts 中的 createLogto 插件） */
 export const logtoConfig: LogtoConfig = {
@@ -32,16 +42,22 @@ export const logtoConfig: LogtoConfig = {
     UserScope.Identities,
     UserScope.Roles,
     UserScope.Organizations
-  ]
+  ],
+  /** 请求的 API resource（token 交换必须带 resource 才产出 JWT；PostgREST 不校验 aud） */
+  resources: [API_RESOURCE]
 }
 
-/** 回调地址（需在 Logto Console 中注册为 Redirect URI） */
+/** 登录回调地址（动态 origin：跟随当前部署端口，如 3006/5173；需在 Logto Console 登记对应 origin） */
 export const redirectUri =
-  import.meta.env.VITE_LOGTO_REDIRECT_URI || 'http://localhost:5173/auth/callback'
+  typeof window !== 'undefined'
+    ? `${window.location.origin}/auth/callback`
+    : import.meta.env.VITE_LOGTO_REDIRECT_URI || 'http://localhost:3006/auth/callback'
 
-/** 登出后跳转地址（需在 Logto Console 中注册为 Post Sign-out Redirect URI） */
+/** 登出回跳地址（动态 origin，与 redirectUri 保持一致） */
 export const postLogoutRedirectUri =
-  import.meta.env.VITE_LOGTO_POST_LOGOUT_REDIRECT_URI || 'http://localhost:5173/auth/login'
+  typeof window !== 'undefined'
+    ? `${window.location.origin}/auth/login`
+    : import.meta.env.VITE_LOGTO_POST_LOGOUT_REDIRECT_URI || 'http://localhost:3006/auth/login'
 
 /** 组织 ID（留空则使用用户级 token；后续可按需动态传入） */
 export const organizationId = import.meta.env.VITE_LOGTO_ORGANIZATION_ID || ''
@@ -57,24 +73,19 @@ export const logtoClient = new LogtoClient(logtoConfig)
 /**
  * 获取 access token（SDK 内置过期检测与刷新）
  *
- * @param resource 可选 API resource indicator
- * @param orgId   可选组织 ID
+ * ⚠️ 必须带 resource（API_RESOURCE）：Logto 对无 resource 的 token 交换返回 opaque 非 JWT，
+ * PostgREST 校验 JWT 时报 PGRST301。不使用 organization token（org token 缺 roles claim，
+ * PostgREST 的 JWT roles 解析依赖用户级 claims）。
+ *
+ * @param resource 可选 API resource indicator（默认 API_RESOURCE）
  * @returns access_token 字符串；未登录或出错时返回空字符串
  */
-export async function getAccessToken(resource?: string, orgId?: string): Promise<string> {
+export async function getAccessToken(resource?: string): Promise<string> {
   try {
     const isAuth = await logtoClient.isAuthenticated()
     if (!isAuth) return ''
 
-    if (orgId || organizationId) {
-      try {
-        return await logtoClient.getOrganizationToken(orgId || organizationId)
-      } catch {
-        // 组织 token 失败，回退到普通 token
-      }
-    }
-
-    return await logtoClient.getAccessToken(resource)
+    return await logtoClient.getAccessToken(resource || API_RESOURCE)
   } catch {
     return ''
   }
@@ -109,7 +120,8 @@ export async function ensureFreshToken(): Promise<string> {
   if (!refreshPromise) {
     refreshPromise = (async () => {
       try {
-        const token = await logtoClient.getAccessToken()
+        // ⚠️ 必须带 resource：无 resource 刷新返回 opaque 非 JWT（PostgREST PGRST301）
+        const token = await logtoClient.getAccessToken(API_RESOURCE)
         if (token) {
           userStore.setToken(token)
         }
@@ -161,4 +173,49 @@ export async function fetchUserInfo() {
  */
 export async function isAuthenticated(): Promise<boolean> {
   return logtoClient.isAuthenticated()
+}
+
+/**
+ * 生成 Logto 授权 URL（登录页 iframe 嵌入用，§2.1 B 方案）
+ *
+ * 复用 SDK 的 signIn 全流程（PKCE verifier/state 生成、signInSession 写入），
+ * 仅将 navigate 从"顶层跳转"替换为"捕获 URL"：
+ * - signInSession 写入 sessionStorage（键 logto:<appId>:signInSession）——
+ *   与 iframe 内的回调页同源共享，useHandleSignInCallback 可正常完成 code 交换
+ * - token 写入 localStorage——整页跳转后应用重启可恢复登录态
+ * - 失败可重试（重置内部 Promise）
+ */
+let embedSignInUrlPromise: Promise<string> | null = null
+
+export async function createEmbedSignInUrl(): Promise<string> {
+  if (embedSignInUrlPromise) {
+    return embedSignInUrlPromise
+  }
+
+  embedSignInUrlPromise = (async () => {
+    let captured = ''
+    const adapter: ClientAdapter = {
+      requester: createRequester(fetch),
+      // 与 main.ts createLogto 插件同款存储（BrowserStorage(appId)），保证会话共享
+      storage: new BrowserStorage(logtoConfig.appId),
+      // 不跳转顶层窗口：捕获授权 URL 供 iframe 使用
+      navigate: (url) => {
+        captured = url
+      },
+      generateState,
+      generateCodeVerifier,
+      generateCodeChallenge
+    }
+    const client = new BaseLogtoClient(logtoConfig, adapter)
+    await client.signIn(redirectUri)
+    return captured
+  })()
+
+  try {
+    return await embedSignInUrlPromise
+  } catch (error) {
+    // 生成失败允许重试（如 Logto 临时不可用）
+    embedSignInUrlPromise = null
+    throw error
+  }
 }

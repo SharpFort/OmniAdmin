@@ -55,6 +55,7 @@
     "@element-plus/icons-vue": "^2.3.2",
     "@iconify/vue": "^5.0.0",
     "@logto/browser": "^3.0.13",
+    "@logto/client": "3.1.8",
     "@logto/vue": "^3.0.13",
     "@tailwindcss/vite": "^4.1.14",
     "@vue/reactivity": "^3.5.21",

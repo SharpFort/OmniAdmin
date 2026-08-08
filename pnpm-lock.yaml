@@ -16,6 +16,9 @@ importers:
       '@logto/browser':
         specifier: ^3.0.13
         version: 3.0.13
+      '@logto/client':
+        specifier: 3.1.8
+        version: 3.1.8
       '@logto/vue':
         specifier: ^3.0.13
         version: 3.0.13(vue@3.5.40(typescript@5.6.3))
@@ -2850,6 +2853,7 @@ packages:
       {
         integrity: sha512-KALDyEYgpY+Rlob/iriUtjV6d5Eq+Y191A5g4UqLAi8CyGP9N1+FdVbkc1SxKc2r4YAYqG8JzO2KGL+AizD70Q==
       }
+    deprecated: Active development of CryptoJS has been discontinued. This library is no longer maintained.
 
   css-functions-list@3.2.3:
     resolution:
