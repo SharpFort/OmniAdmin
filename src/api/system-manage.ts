@@ -53,16 +53,22 @@ export function getUserList(
   })
 }
 
-/** 用户-角色镜像（v_user_roles；⚠️ LEFT JOIN role_code 可为 null，前端过滤） */
+/** 用户-角色镜像（v_user_roles；⚠️ LEFT JOIN role_code 可为 null——默认过滤未分配行；仅超管完整） */
 export function getUserRoles(
   params: {
     userId?: string
+    query?: string
     limit?: number
     offset?: number
+    /** 是否包含未分配角色的行（role_code=null；默认 false，弹窗/列表均只需已分配行） */
+    includeUnassigned?: boolean
   } = {}
 ) {
   const filters: Record<string, string> = {}
   if (params.userId) filters['user_id'] = `eq.${params.userId}`
+  if (params.query) filters['username'] = `ilike.*${params.query}*`
+  // 默认排除 LEFT JOIN 空行，保证分页总数与行数一致
+  if (!params.includeUnassigned) filters['role_code'] = 'not.is.null'
   return getViewPage<Api.Auth.UserRoleRow>('v_user_roles', {
     limit: params.limit ?? 50,
     offset: params.offset ?? 0,

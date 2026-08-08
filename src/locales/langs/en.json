@@ -306,6 +306,8 @@
       "position": "Positions",
       "dict": "Dictionaries",
       "tenant": "Tenants",
+      "userTenant": "User Tenants",
+      "userRole": "User Roles",
       "loginLog": "Login Logs",
       "auditLog": "Audit Logs",
       "monitor": "System Monitor"

@@ -116,6 +116,27 @@ export const systemRoutes: AppRouteRecord = {
       }
     },
     {
+      path: 'user-tenant',
+      name: 'UserTenant',
+      component: '/system/user-tenant',
+      meta: {
+        title: 'menus.system.userTenant',
+        keepAlive: true,
+        roles: ['role_super_admin', 'tenant_admin']
+      }
+    },
+    {
+      path: 'user-role',
+      name: 'UserRole',
+      component: '/system/user-role',
+      meta: {
+        title: 'menus.system.userRole',
+        keepAlive: true,
+        // v_user_roles 仅超管完整（034 有意不授 authenticated）——租户管理员不显示该菜单
+        roles: ['role_super_admin']
+      }
+    },
+    {
       path: 'login-log',
       name: 'LoginLog',
       component: '/system/login-log',

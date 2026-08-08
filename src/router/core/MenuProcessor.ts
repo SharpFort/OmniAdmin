@@ -25,6 +25,8 @@ const COMPONENT_FALLBACK_MAP: Record<string, string> = {
   position: '/system/position',
   dict: '/system/dict',
   tenant: '/system/tenant',
+  'user-tenant': '/system/user-tenant',
+  'user-role': '/system/user-role',
   'login-log': '/system/login-log',
   'audit-log': '/system/audit-log',
   monitor: '/system/monitor'

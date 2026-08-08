@@ -66,18 +66,15 @@ export function getUserTenants(
 export function getUserRoleDetail(
   params: {
     userId?: string
+    query?: string
     limit?: number
     offset?: number
   } = {}
 ) {
   const filters: Record<string, string> = {}
   if (params.userId) filters['user_id'] = `eq.${params.userId}`
-  return getViewPage<{
-    user_id: string
-    username: string
-    role_name: string
-    tenant_name: string
-  }>('v_user_role_detail', {
+  if (params.query) filters['username'] = `ilike.*${params.query}*`
+  return getViewPage<Api.SystemManage.UserTenantRow>('v_user_role_detail', {
     limit: params.limit ?? 50,
     offset: params.offset ?? 0,
     filters

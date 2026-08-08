@@ -98,10 +98,13 @@ declare namespace Api {
       deleted_at: string | null
     }
 
-    /** 用户-角色镜像行（v_user_roles；⚠️ LEFT JOIN，role_code 可为 null，前端需过滤） */
+    /** 用户-角色镜像行（v_user_roles；⚠️ LEFT JOIN，role_code/assigned_at 可为 null，前端需过滤） */
     interface UserRoleRow {
       user_id: string
+      username: string
+      email: string | null
       role_code: string | null
+      assigned_at: string | null
     }
 
     /** 用户资料（rpc_get_user_profile → user_profile 行或 {}；业务列动态） */
@@ -246,6 +249,16 @@ declare namespace Api {
       user_id: string
       username: string
       joined_at: string
+    }
+
+    /** 用户-租户关系行（v_user_role_detail；role_name/tenant_name 均 = 租户名，created_at = joined_at） */
+    interface UserTenantRow {
+      user_id: string
+      username: string
+      email: string | null
+      role_name: string
+      tenant_name: string
+      created_at: string
     }
 
     /** 登录日志（rpc_search_login_logs.items = login_log 视图列） */
