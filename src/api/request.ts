@@ -150,7 +150,9 @@ export async function postRpc<T = unknown>(
 }
 
 /**
- * GET /api_v1_public/{view} 视图查询（返回数组）
+ * GET /{view} 视图查询（返回数组）
+ * ⚠️ 线上 PostgREST 为无前缀路径模式（宿主机 postgrest.conf 为 Pigsty 手工配置，
+ * db-schemas 单 schema——根路径即 api_v1_public；带 /api_v1_public/ 前缀返回 404）
  */
 export async function getView<T = Record<string, unknown>>(
   view: string,
@@ -158,7 +160,7 @@ export async function getView<T = Record<string, unknown>>(
 ): Promise<T[]> {
   try {
     const config = await getConfig()
-    const response = await axios.get<T[]>(`/api_v1_public/${view}${buildQuery(params)}`, config)
+    const response = await axios.get<T[]>(`/${view}${buildQuery(params)}`, config)
     return response.data
   } catch (error) {
     return handleError(error)
@@ -166,7 +168,7 @@ export async function getView<T = Record<string, unknown>>(
 }
 
 /**
- * GET /api_v1_public/{view} 视图分页查询
+ * GET /{view} 视图分页查询
  * limit/offset 分页 + Prefer: count=exact + Content-Range 头取 total
  */
 export async function getViewPage<T = Record<string, unknown>>(
@@ -179,7 +181,7 @@ export async function getViewPage<T = Record<string, unknown>>(
       headers: { Prefer: 'count=exact' }
     })
     const response = await axios.get<T[]>(
-      `/api_v1_public/${view}${buildQuery({ ...rest, limit, offset })}`,
+      `/${view}${buildQuery({ ...rest, limit, offset })}`,
       config
     )
     return {

@@ -260,11 +260,14 @@ export function getApiList(
 // 部门
 // ============================================================================
 
-/** 部门树（get_dept_tree；扁平带 level/path；⚠️ 035 参数 text，可传 null） */
+/** 部门树（get_dept_tree；扁平带 level/path；⚠️ 省略 p_tenant_id 参数——
+ * 显式传 null 触发 PGRST203 重载歧义（api_v1_public text 版 + 015 残留 uuid 版）） */
 export function getDeptTree(tenantId?: string | null) {
-  return postRpc<Api.SystemManage.DeptNode[]>('get_dept_tree', {
-    p_tenant_id: tenantId ?? null
-  })
+  const body: Record<string, unknown> = {}
+  if (tenantId) {
+    body['p_tenant_id'] = tenantId
+  }
+  return postRpc<Api.SystemManage.DeptNode[]>('get_dept_tree', body)
 }
 
 /** 部门列表（v_dept_list 视图，含用户数） */

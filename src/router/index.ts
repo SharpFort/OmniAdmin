@@ -1,13 +1,15 @@
 import type { App } from 'vue'
-import { createRouter, createWebHashHistory } from 'vue-router'
+import { createRouter, createWebHistory } from 'vue-router'
 import { staticRoutes } from './routes/staticRoutes'
 import { configureNProgress } from '@/utils/router'
 import { setupBeforeEachGuard } from './guards/beforeEach'
 import { setupAfterEachGuard } from './guards/afterEach'
 
 // 创建路由实例
+// ⚠️ history 模式（原模板为 hash 模式）：OAuth 回调 URL /auth/callback 依赖真实路径
+// 匹配（Logto SDK 按 history 模式解析 callbackUri）；生产部署需服务器 history fallback
 export const router = createRouter({
-  history: createWebHashHistory(),
+  history: createWebHistory(import.meta.env.VITE_BASE_URL || '/'),
   routes: staticRoutes // 静态路由
 })
 
