@@ -140,7 +140,9 @@ export class MenuProcessor {
       return normalized.replace(/\/index$/, '')
     }
     if (!path) return undefined
-    const lastSegment = path.split('/').filter(Boolean).pop() || ''
+    // path 可能带 query（038 起 query 拼进 path）——兜底映射取纯路径最后一段
+    const purePath = path.split('?')[0]
+    const lastSegment = purePath.split('/').filter(Boolean).pop() || ''
     return COMPONENT_FALLBACK_MAP[lastSegment]
   }
 
@@ -148,11 +150,17 @@ export class MenuProcessor {
     items: Array<Api.Menu.MenuRouteItem & { children?: Api.Menu.MenuRouteItem[] }>
   ): AppRouteRecord[] {
     return items.map((item) => {
-      const isExternalLink = item.menu_type === 'link' || /^https?:\/\//.test(item.path || '')
+      // 038 起外链直判：menu_type=link 或 is_link（不再靠 path LIKE http% hack）
+      const isExternalLink = item.menu_type === 'link' || item.is_link === true
+      // 038 route_name 优先作为路由 name（非空时）
+      const routeName = item.route_name || item.name
+      // 038 query 拼进 path（path?query）
+      const rawPath = item.path || item.name
+      const pathWithQuery = item.query ? `${rawPath}?${item.query}` : rawPath
 
       return {
-        path: item.path || item.name,
-        name: item.name,
+        path: pathWithQuery,
+        name: routeName,
         component: isExternalLink ? undefined : this.normalizeComponent(item.component, item.path),
         meta: {
           title: item.meta?.title || item.name,
@@ -160,8 +168,13 @@ export class MenuProcessor {
           link: isExternalLink ? item.path || undefined : undefined,
           isHide: item.is_visible === false,
           isHideTab: false,
-          keepAlive: false
+          // 038 keep_alive 直用后端值（默认 true）
+          keepAlive: item.keep_alive,
+          // 038 iframe 直判
+          isIframe: item.is_iframe === true
         },
+        // 038 redirect 透传（'noRedirect' 或子路径；normalizeMenuPaths 消费）
+        redirect: item.redirect || undefined,
         children: item.children?.length ? this.convertMenuTreeToRoutes(item.children) : undefined
       }
     })
@@ -245,7 +258,16 @@ export class MenuProcessor {
         ? this.normalizeMenuPaths(item.children, fullPath)
         : item.children
 
-      const redirect = item.redirect || this.resolveDefaultRedirect(children)
+      // 038 redirect 消费：'noRedirect' → 不设置重定向（RuoYi 语义，目录不自动跳转）；
+      // 后端子路径（相对/绝对）→ 与 path 同规则拼接；空 → 推导首个可导航子路由
+      let redirect: string | undefined
+      if (item.redirect === 'noRedirect') {
+        redirect = undefined
+      } else if (item.redirect && typeof item.redirect === 'string') {
+        redirect = this.buildFullPath(item.redirect, parentPath)
+      } else {
+        redirect = this.resolveDefaultRedirect(children)
+      }
 
       return {
         ...item,

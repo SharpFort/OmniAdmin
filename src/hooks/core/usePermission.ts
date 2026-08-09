@@ -28,7 +28,10 @@ export function isSuperAdmin(roles?: string[]): boolean {
   return Array.isArray(roles) && roles.includes(SUPER_ADMIN_ROLE)
 }
 
-/** 拉取权限码集合（v_role_api_detail：role_code ∈ 当前用户 roles 的 api_code） */
+/** 拉取权限码集合（双通道，040 单码制对齐 has_permission）：
+ * - 通道1: v_role_api_detail（role_code ∈ 当前用户 roles 的 api_code）
+ * - 通道2: get_user_menu 的 button 行 perms（role_menu → menu.perms，单码制下与 api_code 同码）
+ * 超管短路返回 ['*'] */
 async function fetchPermissionCodes(): Promise<Set<string>> {
   const userStore = useUserStore()
   const userId = userStore.info?.id || ''
@@ -43,7 +46,7 @@ async function fetchPermissionCodes(): Promise<Set<string>> {
   const codes = new Set<string>()
   if (roles.length > 0) {
     try {
-      // ⚠️ v_role_api_detail 依赖 role 镜像同步（INNER JOIN role）——未同步时返回空
+      // 通道1: ⚠️ v_role_api_detail 依赖 role 镜像同步（INNER JOIN role）——未同步时返回空
       const filters: Record<string, string> = {
         role_code: `in.(${roles.join(',')})`
       }
@@ -56,6 +59,18 @@ async function fetchPermissionCodes(): Promise<Set<string>> {
       })
     } catch (error) {
       console.warn('[usePermission] 拉取权限码失败（按钮将隐藏）:', error)
+    }
+
+    // 通道2（040 单码制）：get_user_menu 的 button 行 perms——角色经菜单绑定按钮时
+    // v_role_api_detail 无对应 api_code，但后端 has_permission 通道2 放行；此处补齐前端集合
+    try {
+      const { getUserMenu } = await import('@/api/system-manage')
+      const menuRows = await getUserMenu()
+      menuRows.forEach((row) => {
+        if (row.menu_type === 'button' && row.perms) codes.add(row.perms)
+      })
+    } catch (error) {
+      console.warn('[usePermission] get_user_menu 按钮权限收集失败:', error)
     }
   }
 
