@@ -125,7 +125,7 @@ declare namespace Api {
 
   /** 菜单三型（§2.3 分层命名） */
   namespace Menu {
-    /** get_user_menu 项（035 起全字段；前端路由数据源） */
+    /** get_user_menu 项（038 起全字段；前端路由数据源） */
     interface MenuRouteItem {
       id: string
       parent_id: string | null
@@ -136,13 +136,26 @@ declare namespace Api {
       is_visible: boolean
       /** 035 补：033 回填值（如 system/user/index），映射表仅兜底 */
       component: string | null
+      // ↓↓↓ 038 新增（导航元字段）↓↓↓
+      /** 外链（menu_type=link 时恒 true） */
+      is_link: boolean
+      /** iframe 内嵌 */
+      is_iframe: boolean
+      /** 页面缓存（keep-alive，后端默认 true） */
+      keep_alive: boolean
+      /** 目录重定向（'noRedirect' 或子路径） */
+      redirect: string | null
+      /** 路由参数（如 tab=1，拼进 path 的 query） */
+      query: string | null
+      /** Vue Router name（非空时优先后端值） */
+      route_name: string | null
       meta: {
         title: string
         icon: string | null
       }
     }
 
-    /** iam_menu 视图全列（菜单管理页数据源） */
+    /** iam_menu 视图全列（菜单管理页数据源；038 起含导航元字段） */
     interface MenuAdminNode {
       id: string
       parent_id: string | null
@@ -155,6 +168,14 @@ declare namespace Api {
       order_num: number
       is_visible: boolean
       is_active: boolean
+      // ↓↓↓ 038 新增 ↓↓↓
+      remark: string | null
+      route_name: string | null
+      query: string | null
+      is_link: boolean
+      is_iframe: boolean
+      redirect: string | null
+      keep_alive: boolean
       created_at: string
       updated_at: string
     }
@@ -408,7 +429,19 @@ declare namespace Api {
       method: string
       api_name: string
       api_code: string
+      /** 039 新增：展示分组名（回填=归属菜单名） */
+      api_group: string | null
+      /** 039 新增：归属菜单 id（一键授权 join key） */
+      menu_id: string | null
       api_is_active: boolean
+    }
+
+    /** 角色数据范围（rpc_get_role_data_scope；042） */
+    interface RoleDataScope {
+      role_code: string
+      scope_type: 'all' | 'dept_and_child' | 'self' | 'custom'
+      /** custom 时的部门列表 */
+      depts: Array<{ id: string; name: string }>
     }
 
     // ==========================================================================
@@ -433,7 +466,7 @@ declare namespace Api {
     /** @deprecated 使用 RolePermissionDetail */
     type RolePermissions = RolePermissionDetail
 
-    /** @deprecated 使用 RoleApiPerm / iam_api */
+    /** @deprecated 使用 RoleApiPerm / ApiAdminNode（iam_api） */
     interface ApiItem {
       id: string
       api_code: string | null
@@ -444,6 +477,23 @@ declare namespace Api {
       is_active: boolean
       created_at?: string
       updated_at?: string
+    }
+
+    /** API 权限点管理数据源（iam_api 视图全列；039 起含分组/归属） */
+    interface ApiAdminNode {
+      id: string
+      path: string
+      method: string
+      name: string
+      description: string | null
+      api_code: string | null
+      is_active: boolean
+      /** 039 新增：展示分组名（13 组已回填，默认=归属菜单名） */
+      api_group: string | null
+      /** 039 新增：归属菜单 id（一键授权 join key） */
+      menu_id: string | null
+      created_at: string
+      updated_at: string
     }
 
     /** @deprecated v_role_list 行（Phase 5 迁移） */
