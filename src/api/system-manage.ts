@@ -387,12 +387,14 @@ export function assignUserPositions(params: {
 // ============================================================================
 
 /** 登录日志分页查询（rpc_search_login_logs；🔐 sys:login-log:list 仅超管绑定；
- * 无关键词搜索——p_user_id 精确匹配 + 结果 + 时间范围；上限 100）
+ * 无关键词搜索——p_user_id 精确匹配 + 结果 + 登录方式/地区模糊 + 时间范围；上限 100）
  * 时间约定与审计日志一致：from/to 本地时间，date-only 结束日补 23:59:59（左闭右闭） */
 export function searchLoginLogs(
   params: {
     user_id?: string | null
     result?: string | null
+    login_type?: string | null
+    region?: string | null
     from?: string | null
     to?: string | null
     limit?: number
@@ -402,6 +404,8 @@ export function searchLoginLogs(
   return postRpc<Api.Common.PageResult<Api.SystemManage.LoginLog>>('rpc_search_login_logs', {
     p_user_id: params.user_id ?? null,
     p_result: params.result ?? null,
+    p_login_type: params.login_type ?? null,
+    p_region: params.region ?? null,
     p_from: toIsoLocal(params.from),
     p_to: toIsoLocal(params.to, true),
     p_limit: params.limit ?? 50,

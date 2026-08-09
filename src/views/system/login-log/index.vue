@@ -1,4 +1,4 @@
-<!-- 登录日志（rpc_search_login_logs：用户下拉 + 结果下拉 + 时间范围，无关键词搜索）
+<!-- 登录日志（rpc_search_login_logs：用户/结果下拉 + 登录方式/地区模糊 + 时间范围；037 扩展）
   ⚠️ sys:login-log:list 仅超管绑定 → tenant_admin 42501 全局提示 + 页面降级文案（B-3） -->
 <template>
   <div class="login-log-page art-full-height">
@@ -44,6 +44,8 @@
   const defaultSearchForm = () => ({
     user_id: '',
     result: '',
+    login_type: '',
+    region: '',
     date_range: [] as [string, string] | []
   })
   const searchForm = ref(defaultSearchForm())
@@ -59,6 +61,8 @@
       const result = await searchLoginLogs({
         user_id: searchForm.value.user_id || null,
         result: searchForm.value.result || null,
+        login_type: searchForm.value.login_type || null,
+        region: searchForm.value.region || null,
         from: searchForm.value.date_range?.[0] || null,
         to: searchForm.value.date_range?.[1] || null,
         limit: pagination.size,
@@ -133,8 +137,21 @@
     {
       prop: 'region',
       label: '地区',
-      minWidth: 140,
+      minWidth: 170,
       formatter: (row) => row.region || '-'
+    },
+    {
+      prop: 'user_agent',
+      label: 'User-Agent',
+      minWidth: 220,
+      showOverflowTooltip: true,
+      formatter: (row) => row.user_agent || '-'
+    },
+    {
+      prop: 'logto_event',
+      label: 'Logto 事件',
+      width: 120,
+      formatter: (row) => row.logto_event || '-'
     },
     {
       prop: 'created_at',

@@ -21,6 +21,8 @@
     modelValue: {
       user_id: string
       result: string
+      login_type: string
+      region: string
       date_range: [string, string] | []
     }
   }
@@ -82,6 +84,20 @@
         options: resultOptions,
         clearable: true
       }
+    },
+    {
+      label: '登录方式',
+      key: 'login_type',
+      type: 'input',
+      placeholder: '模糊匹配，如 password / unknown',
+      clearable: true
+    },
+    {
+      label: '地区',
+      key: 'region',
+      type: 'input',
+      placeholder: '模糊匹配，如 广东 / 中国',
+      clearable: true
     },
     {
       label: '时间范围',
