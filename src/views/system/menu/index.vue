@@ -121,6 +121,30 @@
       formatter: (row) => row.component || '-'
     },
     { prop: 'perms', label: '权限标识', minWidth: 110, formatter: (row) => row.perms || '-' },
+    // ↓↓↓ 038 可选展示列（ArtTableHeader 列显隐可关）↓↓↓
+    {
+      prop: 'route_name',
+      label: '路由名称',
+      minWidth: 110,
+      formatter: (row) => row.route_name || '-'
+    },
+    {
+      prop: 'keep_alive',
+      label: '缓存',
+      width: 70,
+      align: 'center',
+      formatter: (row) =>
+        h(ElTag, { type: row.keep_alive ? 'success' : 'info' }, () =>
+          row.keep_alive ? '缓存' : '不缓存'
+        )
+    },
+    {
+      prop: 'remark',
+      label: '备注',
+      minWidth: 140,
+      showOverflowTooltip: true,
+      formatter: (row) => row.remark || '-'
+    },
     { prop: 'icon', label: '图标', width: 60, formatter: (row) => row.icon || '-' },
     {
       prop: 'order_num',
