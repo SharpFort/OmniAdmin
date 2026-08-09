@@ -295,6 +295,61 @@ export function getApiList(
   })
 }
 
+/** 创建 API 权限点（rpc_create_api；🔐 sys:api:create；path+method 重复/api_code 重复拒绝 22023；
+ * p_api_group 留空且选了归属菜单时后端自动取 menu_name） */
+export function createApi(params: {
+  p_path: string
+  p_method: string
+  p_name: string
+  p_api_code?: string | null
+  p_description?: string | null
+  p_is_active?: boolean
+  p_menu_id?: string | null
+  p_api_group?: string | null
+}) {
+  return postRpc<Api.Common.ApiOk>('rpc_create_api', {
+    p_path: params.p_path,
+    p_method: params.p_method,
+    p_name: params.p_name,
+    p_api_code: params.p_api_code ?? null,
+    p_description: params.p_description ?? null,
+    p_is_active: params.p_is_active ?? true,
+    p_menu_id: params.p_menu_id ?? null,
+    p_api_group: params.p_api_group ?? null
+  })
+}
+
+/** 更新 API 权限点（rpc_update_api；🔐 sys:api:update；NULL=不改，文本传 '' 清空，
+ * p_menu_id 传零 uuid 哨兵取消归属） */
+export function updateApi(params: {
+  p_id: string
+  p_path?: string | null
+  p_method?: string | null
+  p_name?: string | null
+  p_api_code?: string | null
+  p_description?: string | null
+  p_is_active?: boolean | null
+  p_menu_id?: string | null
+  p_api_group?: string | null
+}) {
+  return postRpc<Api.Common.ApiOk>('rpc_update_api', {
+    p_id: params.p_id,
+    p_path: params.p_path ?? null,
+    p_method: params.p_method ?? null,
+    p_name: params.p_name ?? null,
+    p_api_code: params.p_api_code ?? null,
+    p_description: params.p_description ?? null,
+    p_is_active: params.p_is_active ?? null,
+    p_menu_id: params.p_menu_id ?? null,
+    p_api_group: params.p_api_group ?? null
+  })
+}
+
+/** 删除 API 权限点（rpc_delete_api；🔐 sys:api:delete；有角色绑定 → 23503 需先解绑） */
+export function deleteApi(apiId: string) {
+  return postRpc<Api.Common.ApiOk>('rpc_delete_api', { p_id: apiId })
+}
+
 // ============================================================================
 // 角色数据范围 / 菜单子树 API 一键授权（041/042）
 // ============================================================================

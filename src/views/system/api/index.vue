@@ -1,10 +1,17 @@
-<!-- API 权限点管理（iam_api 视图；039 按 api_group 分组展示 + menu_id 归属菜单；只读列表） -->
+<!-- API 权限点管理（iam_api 视图；039 按 api_group 分组展示 + menu_id 归属菜单；
+  043 写 RPC：新增/编辑/删除，sys:api:create/update/delete） -->
 <template>
   <div class="api-page art-full-height">
     <ApiSearch v-model="searchForm" @search="handleSearch" @reset="resetSearch" />
 
     <ElCard class="art-table-card">
-      <ArtTableHeader v-model:columns="columnChecks" :loading="loading" @refresh="getData" />
+      <ArtTableHeader v-model:columns="columnChecks" :loading="loading" @refresh="getData">
+        <template #left>
+          <ElButton v-perm="'sys:api:create'" type="primary" v-ripple @click="handleAddApi">
+            新增 API
+          </ElButton>
+        </template>
+      </ArtTableHeader>
 
       <ArtTable
         :loading="loading"
@@ -14,15 +21,26 @@
         @pagination:size-change="handleSizeChange"
         @pagination:current-change="handleCurrentChange"
       />
+
+      <!-- API 新增/编辑弹窗 -->
+      <ApiDialog
+        v-model:visible="dialogVisible"
+        :type="dialogType"
+        :edit-data="editData"
+        :menu-tree="menuTree"
+        @submit="getData"
+      />
     </ElCard>
   </div>
 </template>
 
 <script setup lang="ts">
   import { useTableColumns } from '@/hooks/core/useTableColumns'
-  import { getApiList, getMenuList } from '@/api/system-manage'
+  import { getApiList, getMenuList, deleteApi } from '@/api/system-manage'
   import ApiSearch from './modules/api-search.vue'
-  import { ElTag } from 'element-plus'
+  import ApiDialog from './modules/api-dialog.vue'
+  import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
+  import { ElTag, ElMessage, ElMessageBox } from 'element-plus'
 
   defineOptions({ name: 'Api' })
 
@@ -59,8 +77,16 @@
   const data = ref<ApiRow[]>([])
   const pagination = reactive({ current: 1, size: 20, total: 0 })
 
+  // 新增/编辑弹窗
+  const dialogVisible = ref(false)
+  const dialogType = ref<'add' | 'edit'>('add')
+  const editData = ref<ApiRow | null>(null)
+
   /** menu_id → 菜单名 映射（039 归属菜单列展示；iam_menu 全量） */
   const menuNameMap = ref<Record<string, string>>({})
+
+  /** 归属菜单树（弹窗 el-tree-select 数据源；与映射同源一次拉取） */
+  const menuTree = ref<Array<{ id: string; label: string; children?: unknown[] }>>([])
 
   const loadMenuNames = async () => {
     try {
@@ -70,6 +96,23 @@
         map[item.id] = item.menu_name
       })
       menuNameMap.value = map
+      // 两遍构建树（先 Map 后挂载，不假设父先于子）
+      const nodeMap = new Map<string, { id: string; label: string; children?: unknown[] }>()
+      result.items.forEach((item) => {
+        nodeMap.set(item.id, { id: item.id, label: item.menu_name })
+      })
+      const roots: Array<{ id: string; label: string; children?: unknown[] }> = []
+      result.items.forEach((item) => {
+        const node = nodeMap.get(item.id)!
+        if (item.parent_id && nodeMap.has(item.parent_id)) {
+          const parent = nodeMap.get(item.parent_id)!
+          parent.children = parent.children || []
+          parent.children.push(node)
+        } else {
+          roots.push(node)
+        }
+      })
+      menuTree.value = roots
     } catch (error) {
       console.warn('拉取菜单映射失败（归属菜单列显示 -）:', error)
     }
@@ -162,8 +205,65 @@
         h(ElTag, { type: row.is_active ? 'success' : 'warning' }, () =>
           row.is_active ? '启用' : '禁用'
         )
+    },
+    {
+      prop: 'operation',
+      label: '操作',
+      width: 130,
+      align: 'right',
+      fixed: 'right',
+      formatter: (row) =>
+        h('div', { style: 'text-align: right' }, [
+          h(ArtButtonTable, {
+            type: 'edit',
+            onClick: () => handleEditApi(row)
+          }),
+          h(ArtButtonTable, {
+            type: 'delete',
+            onClick: () => handleDeleteApi(row)
+          })
+        ])
     }
   ])
+
+  const handleAddApi = (): void => {
+    dialogType.value = 'add'
+    editData.value = null
+    dialogVisible.value = true
+  }
+
+  const handleEditApi = (row: ApiRow): void => {
+    dialogType.value = 'edit'
+    editData.value = row
+    dialogVisible.value = true
+  }
+
+  /** 删除（🔐 sys:api:delete；有角色绑定后端 23503 拒绝） */
+  const handleDeleteApi = async (row: ApiRow): Promise<void> => {
+    try {
+      await ElMessageBox.confirm(
+        `确定删除 API「${row.name || row.path}」吗？删除后无法恢复`,
+        '提示',
+        {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          type: 'warning'
+        }
+      )
+      await deleteApi(row.id)
+      ElMessage.success('删除成功')
+      getData()
+    } catch (error: any) {
+      // 取消弹窗不提示
+      if (error === 'cancel' || error === 'close') return
+      if (error?.message?.includes('bindings') || error?.message?.includes('23503')) {
+        ElMessage.error('该 API 已被角色绑定，请先在角色授权页解绑后再删除')
+      } else {
+        console.error('删除 API 失败:', error)
+        ElMessage.error(`删除失败：${error?.message || '未知错误'}`)
+      }
+    }
+  }
 
   onMounted(() => {
     getData()
