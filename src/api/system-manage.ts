@@ -382,6 +382,16 @@ export function assignUserPositions(params: {
   })
 }
 
+/** 用户-岗位关联列表（user_position 视图，分页；⚠️ 仅 ID 列，展示名需前端 join） */
+export function getUserPositions(params: { limit?: number; offset?: number } = {}) {
+  return getViewPage<Api.SystemManage.UserPositionRow>('user_position', {
+    limit: params.limit ?? 50,
+    offset: params.offset ?? 0,
+    order: 'created_at.desc',
+    filters: {}
+  })
+}
+
 // ============================================================================
 // 登录日志
 // ============================================================================
@@ -425,18 +435,23 @@ export function updateConfig(configKey: string, configValue: string) {
   })
 }
 
-/** 管理端配置列表（config_admin 视图，分页；含 description 等管理字段） */
-export function getConfigAdminList(params: { limit?: number; offset?: number } = {}) {
-  return getViewPage<{
-    config_key: string
-    config_value: string
-    config_type: string
-    description: string | null
-    is_public: boolean
-    updated_at: string | null
-  }>('config_admin', {
+/** 管理端配置列表（config_admin 视图，分页；含 description 等管理字段；页面仅超管） */
+export function getConfigAdminList(
+  params: {
+    query?: string
+    isPublic?: boolean
+    limit?: number
+    offset?: number
+  } = {}
+) {
+  const filters: Record<string, string> = {}
+  if (params.query) filters['config_key'] = `ilike.*${params.query}*`
+  if (typeof params.isPublic === 'boolean') filters['is_public'] = `eq.${params.isPublic}`
+  return getViewPage<Api.SystemManage.AppConfigRow>('config_admin', {
     limit: params.limit ?? 50,
-    offset: params.offset ?? 0
+    offset: params.offset ?? 0,
+    order: 'config_key.asc',
+    filters
   })
 }
 

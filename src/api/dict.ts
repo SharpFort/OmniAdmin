@@ -30,16 +30,22 @@ export function getDictTypes(params: { query?: string; limit?: number; offset?: 
   })
 }
 
-/** 字典数据项列表（dict_data 视图，分页；按 dict_name 过滤） */
+/** 字典数据项列表（dict_data 视图，分页）
+ * - dictName：字典编码精确匹配（数据项弹窗用）
+ * - dictNameLike / query：独立页搜索（编码/显示名模糊） */
 export function getDictDataList(
   params: {
     dictName?: string
+    dictNameLike?: string
+    query?: string
     limit?: number
     offset?: number
   } = {}
 ) {
   const filters: Record<string, string> = {}
   if (params.dictName) filters['dict_name'] = `eq.${params.dictName}`
+  if (params.dictNameLike) filters['dict_name'] = `ilike.*${params.dictNameLike}*`
+  if (params.query) filters['item_label'] = `ilike.*${params.query}*`
   return getViewPage<Api.SystemManage.DictData>('dict_data', {
     limit: params.limit ?? 50,
     offset: params.offset ?? 0,

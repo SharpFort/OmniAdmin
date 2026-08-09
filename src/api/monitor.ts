@@ -6,7 +6,7 @@
  *   035 已补 GRANT authenticated，租户管理员调用时函数内静默返回空，非 42501）
  * - cleanup_expired_tokens 已整链删除（035），不封装
  */
-import { postRpc, getView } from './request'
+import { postRpc, getView, getViewPage } from './request'
 
 /** 系统统计（v_system_stats 单行） */
 export async function getSystemStats() {
@@ -30,4 +30,18 @@ export function listCronJobs() {
 /** pg_cron 运行历史（👑 超管；返回数组） */
 export function listCronJobRuns(limit = 100) {
   return postRpc<Api.SystemManage.CronJobRun[]>('rpc_list_cron_job_runs', { p_limit: limit })
+}
+
+/** 定时任务执行日志（cron_job_log 视图，分页；只读业务日志表） */
+export function getCronJobLogList(
+  params: { query?: string; limit?: number; offset?: number } = {}
+) {
+  const filters: Record<string, string> = {}
+  if (params.query) filters['job_name'] = `ilike.*${params.query}*`
+  return getViewPage<Api.SystemManage.CronJobLog>('cron_job_log', {
+    limit: params.limit ?? 50,
+    offset: params.offset ?? 0,
+    order: 'execution_time.desc',
+    filters
+  })
 }

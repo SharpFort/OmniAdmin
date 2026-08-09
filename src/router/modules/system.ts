@@ -96,11 +96,31 @@ export const systemRoutes: AppRouteRecord = {
       }
     },
     {
+      path: 'user-position',
+      name: 'UserPosition',
+      component: '/system/user-position',
+      meta: {
+        title: 'menus.system.userPosition',
+        keepAlive: true,
+        roles: ['role_super_admin', 'tenant_admin']
+      }
+    },
+    {
       path: 'dict',
       name: 'Dict',
       component: '/system/dict',
       meta: {
         title: 'menus.system.dict',
+        keepAlive: true,
+        roles: ['role_super_admin', 'tenant_admin']
+      }
+    },
+    {
+      path: 'dict-data',
+      name: 'DictData',
+      component: '/system/dict-data',
+      meta: {
+        title: 'menus.system.dictData',
         keepAlive: true,
         roles: ['role_super_admin', 'tenant_admin']
       }
@@ -162,6 +182,27 @@ export const systemRoutes: AppRouteRecord = {
       component: '/system/monitor',
       meta: {
         title: 'menus.system.monitor',
+        keepAlive: true,
+        roles: ['role_super_admin', 'tenant_admin']
+      }
+    },
+    {
+      // config_admin 视图含 password.* 等敏感配置 → 页面仅超管可见（sys:config:write 仅超管绑定）
+      path: 'app-config',
+      name: 'AppConfig',
+      component: '/system/app-config',
+      meta: {
+        title: 'menus.system.appConfig',
+        keepAlive: true,
+        roles: ['role_super_admin']
+      }
+    },
+    {
+      path: 'cron-job-log',
+      name: 'CronJobLog',
+      component: '/system/cron-job-log',
+      meta: {
+        title: 'menus.system.cronJobLog',
         keepAlive: true,
         roles: ['role_super_admin', 'tenant_admin']
       }

@@ -304,13 +304,17 @@
       "api": "API Management",
       "dept": "Departments",
       "position": "Positions",
+      "userPosition": "User Positions",
       "dict": "Dictionary Types",
+      "dictData": "Dictionary Data",
       "tenant": "Tenants",
       "userTenant": "User Tenants",
       "userRole": "User Roles",
       "loginLog": "Login Logs",
       "auditLog": "Audit Logs",
-      "monitor": "System Monitor"
+      "monitor": "System Monitor",
+      "appConfig": "App Config",
+      "cronJobLog": "Cron Job Logs"
     },
     "safeguard": {
       "title": "Safeguard",

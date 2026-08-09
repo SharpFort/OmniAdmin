@@ -199,6 +199,16 @@ declare namespace Api {
       path_name: string
     }
 
+    /** 用户-岗位关联（user_position 视图；⚠️ 仅 ID 列，用户名/岗位名需前端 join） */
+    interface UserPositionRow {
+      user_id: string
+      position_id: string
+      tenant_id: string | null
+      is_primary: boolean
+      created_at: string
+      created_by: string | null
+    }
+
     /** 字典类型（dict_type 视图） */
     interface DictType {
       id: string
@@ -342,6 +352,27 @@ declare namespace Api {
       return_message: string
       start_time: string
       end_time: string
+    }
+
+    /** 定时任务执行日志（cron_job_log 视图；只读；业务日志表，非 pg_cron 系统表） */
+    interface CronJobLog {
+      id: string
+      job_name: string
+      execution_time: string
+      result: string | null
+      duration_ms: number | null
+    }
+
+    /** 系统配置行（config_admin 视图；含 description 管理字段） */
+    interface AppConfigRow {
+      id: string
+      config_key: string
+      config_value: string | null
+      config_type: string
+      description: string | null
+      is_public: boolean
+      created_at: string
+      updated_at: string
     }
 
     /** 角色权限详情（get_role_permissions RPC） */
