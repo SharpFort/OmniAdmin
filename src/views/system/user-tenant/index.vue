@@ -1,18 +1,11 @@
 <!-- 用户租户管理（v_user_role_detail：用户×组织成员关系投影；只读，成员管理在 Logto Console） -->
 <template>
   <div class="user-tenant-page art-full-height">
+    <UserTenantSearch v-model="searchForm" @search="handleSearch" @reset="resetSearch" />
+
     <ElCard class="art-table-card">
       <ArtTableHeader v-model:columns="columnChecks" :loading="loading" @refresh="getData">
         <template #left>
-          <ElInput
-            v-model="query"
-            placeholder="按用户名过滤"
-            clearable
-            class="w-60"
-            @keyup.enter="handleSearch"
-            @clear="handleSearch"
-          />
-          <ElButton @click="handleSearch">搜索</ElButton>
           <span class="text-xs opacity-60"
             >用户与租户（组织）的成员关系，新增/移除在 Logto Console 侧操作</span
           >
@@ -34,12 +27,16 @@
 <script setup lang="ts">
   import { useTableColumns } from '@/hooks/core/useTableColumns'
   import { getUserRoleDetail } from '@/api/tenant'
+  import UserTenantSearch from './modules/user-tenant-search.vue'
 
   defineOptions({ name: 'UserTenant' })
 
   type UserTenantRow = Api.SystemManage.UserTenantRow
 
-  const query = ref('')
+  // 搜索表单（单一数据源：搜索/重置/分页均基于此；ArtSearchBar 空值自动剔除）
+  const defaultSearchForm = () => ({ query: '' })
+  const searchForm = ref(defaultSearchForm())
+
   const loading = ref(false)
   const data = ref<UserTenantRow[]>([])
   const pagination = reactive({ current: 1, size: 20, total: 0 })
@@ -48,7 +45,7 @@
     loading.value = true
     try {
       const result = await getUserRoleDetail({
-        query: query.value || undefined,
+        query: searchForm.value.query || undefined,
         limit: pagination.size,
         offset: (pagination.current - 1) * pagination.size
       })
@@ -63,7 +60,15 @@
     }
   }
 
-  const handleSearch = () => {
+  // 搜索 → 合并清洗后参数并跳回第 1 页（分页跳转规范：搜索/重置/改每页条数均回第 1 页）
+  const handleSearch = (params: any) => {
+    Object.assign(searchForm.value, defaultSearchForm(), params)
+    pagination.current = 1
+    getData()
+  }
+  // 重置 → 恢复默认条件并跳回第 1 页
+  const resetSearch = () => {
+    searchForm.value = defaultSearchForm()
     pagination.current = 1
     getData()
   }

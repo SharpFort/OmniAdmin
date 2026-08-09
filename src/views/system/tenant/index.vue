@@ -1,20 +1,10 @@
 <!-- 租户管理（rpc_list_tenants + rpc_list_tenant_members 成员弹窗；035 补绑 tenant_admin） -->
 <template>
   <div class="tenant-page art-full-height">
+    <TenantSearch v-model="searchForm" @search="handleSearch" @reset="resetSearch" />
+
     <ElCard class="art-table-card">
-      <ArtTableHeader v-model:columns="columnChecks" :loading="loading" @refresh="getData">
-        <template #left>
-          <ElInput
-            v-model="query"
-            placeholder="按租户名称过滤"
-            clearable
-            class="w-60"
-            @keyup.enter="handleSearch"
-            @clear="handleSearch"
-          />
-          <ElButton @click="handleSearch">搜索</ElButton>
-        </template>
-      </ArtTableHeader>
+      <ArtTableHeader v-model:columns="columnChecks" :loading="loading" @refresh="getData" />
 
       <ArtTable
         :loading="loading"
@@ -35,13 +25,17 @@
   import { useTableColumns } from '@/hooks/core/useTableColumns'
   import { listTenants } from '@/api/tenant'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
+  import TenantSearch from './modules/tenant-search.vue'
   import MembersDialog from './modules/members-dialog.vue'
 
   defineOptions({ name: 'Tenant' })
 
   type Tenant = Api.SystemManage.Tenant
 
-  const query = ref('')
+  // 搜索表单（单一数据源：搜索/重置/分页均基于此；ArtSearchBar 空值自动剔除）
+  const defaultSearchForm = () => ({ query: '' })
+  const searchForm = ref(defaultSearchForm())
+
   const loading = ref(false)
   const data = ref<Tenant[]>([])
   const pagination = reactive({ current: 1, size: 20, total: 0 })
@@ -53,7 +47,7 @@
     loading.value = true
     try {
       const result = await listTenants({
-        query: query.value || null,
+        query: searchForm.value.query || undefined,
         limit: pagination.size,
         offset: (pagination.current - 1) * pagination.size
       })
@@ -68,7 +62,15 @@
     }
   }
 
-  const handleSearch = () => {
+  // 搜索 → 合并清洗后参数并跳回第 1 页（分页跳转规范：搜索/重置/改每页条数均回第 1 页）
+  const handleSearch = (params: any) => {
+    Object.assign(searchForm.value, defaultSearchForm(), params)
+    pagination.current = 1
+    getData()
+  }
+  // 重置 → 恢复默认条件并跳回第 1 页
+  const resetSearch = () => {
+    searchForm.value = defaultSearchForm()
     pagination.current = 1
     getData()
   }

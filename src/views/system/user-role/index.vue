@@ -1,18 +1,11 @@
 <!-- 用户角色管理（v_user_roles：用户×角色分配镜像；⚠️ 仅超管完整，角色分配在 Logto Console） -->
 <template>
   <div class="user-role-page art-full-height">
+    <UserRoleSearch v-model="searchForm" @search="handleSearch" @reset="resetSearch" />
+
     <ElCard class="art-table-card">
       <ArtTableHeader v-model:columns="columnChecks" :loading="loading" @refresh="getData">
         <template #left>
-          <ElInput
-            v-model="query"
-            placeholder="按用户名过滤"
-            clearable
-            class="w-60"
-            @keyup.enter="handleSearch"
-            @clear="handleSearch"
-          />
-          <ElButton @click="handleSearch">搜索</ElButton>
           <span class="text-xs opacity-60"
             >用户与角色的分配关系（仅超级管理员可见完整数据），分配在 Logto Console 侧操作</span
           >
@@ -34,12 +27,16 @@
 <script setup lang="ts">
   import { useTableColumns } from '@/hooks/core/useTableColumns'
   import { getUserRoles } from '@/api/system-manage'
+  import UserRoleSearch from './modules/user-role-search.vue'
 
   defineOptions({ name: 'UserRole' })
 
   type UserRoleRow = Api.Auth.UserRoleRow
 
-  const query = ref('')
+  // 搜索表单（单一数据源：搜索/重置/分页均基于此；ArtSearchBar 空值自动剔除）
+  const defaultSearchForm = () => ({ query: '' })
+  const searchForm = ref(defaultSearchForm())
+
   const loading = ref(false)
   const data = ref<UserRoleRow[]>([])
   const pagination = reactive({ current: 1, size: 20, total: 0 })
@@ -48,7 +45,7 @@
     loading.value = true
     try {
       const result = await getUserRoles({
-        query: query.value || undefined,
+        query: searchForm.value.query || undefined,
         limit: pagination.size,
         offset: (pagination.current - 1) * pagination.size
       })
@@ -64,7 +61,15 @@
     }
   }
 
-  const handleSearch = () => {
+  // 搜索 → 合并清洗后参数并跳回第 1 页（分页跳转规范：搜索/重置/改每页条数均回第 1 页）
+  const handleSearch = (params: any) => {
+    Object.assign(searchForm.value, defaultSearchForm(), params)
+    pagination.current = 1
+    getData()
+  }
+  // 重置 → 恢复默认条件并跳回第 1 页
+  const resetSearch = () => {
+    searchForm.value = defaultSearchForm()
     pagination.current = 1
     getData()
   }

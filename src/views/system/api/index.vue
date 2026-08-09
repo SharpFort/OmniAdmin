@@ -1,20 +1,10 @@
 <!-- API 权限点管理（iam_api 视图；只读列表 + 关键词过滤；无写路径） -->
 <template>
   <div class="api-page art-full-height">
+    <ApiSearch v-model="searchForm" @search="handleSearch" @reset="resetSearch" />
+
     <ElCard class="art-table-card">
-      <ArtTableHeader v-model:columns="columnChecks" :loading="loading" @refresh="getData">
-        <template #left>
-          <ElInput
-            v-model="query"
-            placeholder="按名称/路径/编码过滤"
-            clearable
-            class="w-60"
-            @keyup.enter="handleSearch"
-            @clear="handleSearch"
-          />
-          <ElButton @click="handleSearch">搜索</ElButton>
-        </template>
-      </ArtTableHeader>
+      <ArtTableHeader v-model:columns="columnChecks" :loading="loading" @refresh="getData" />
 
       <ArtTable
         :loading="loading"
@@ -31,13 +21,17 @@
 <script setup lang="ts">
   import { useTableColumns } from '@/hooks/core/useTableColumns'
   import { getApiList } from '@/api/system-manage'
+  import ApiSearch from './modules/api-search.vue'
   import { ElTag } from 'element-plus'
 
   defineOptions({ name: 'Api' })
 
   type ApiItem = Api.SystemManage.ApiItem
 
-  const query = ref('')
+  // 搜索表单（单一数据源：搜索/重置/分页均基于此；ArtSearchBar 空值自动剔除）
+  const defaultSearchForm = () => ({ query: '' })
+  const searchForm = ref(defaultSearchForm())
+
   const loading = ref(false)
   const data = ref<ApiItem[]>([])
   const pagination = reactive({ current: 1, size: 20, total: 0 })
@@ -46,7 +40,7 @@
     loading.value = true
     try {
       const result = await getApiList({
-        query: query.value || undefined,
+        query: searchForm.value.query || undefined,
         limit: pagination.size,
         offset: (pagination.current - 1) * pagination.size
       })
@@ -61,7 +55,15 @@
     }
   }
 
-  const handleSearch = () => {
+  // 搜索 → 合并清洗后参数并跳回第 1 页（分页跳转规范：搜索/重置/改每页条数均回第 1 页）
+  const handleSearch = (params: any) => {
+    Object.assign(searchForm.value, defaultSearchForm(), params)
+    pagination.current = 1
+    getData()
+  }
+  // 重置 → 恢复默认条件并跳回第 1 页
+  const resetSearch = () => {
+    searchForm.value = defaultSearchForm()
     pagination.current = 1
     getData()
   }
