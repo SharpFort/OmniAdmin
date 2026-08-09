@@ -1,42 +1,14 @@
-<!-- 审计日志（search_audit_log 关键词/表名/操作筛选 + v_audit_log_timeline 时间线）
+<!-- 审计日志（search_audit_log 关键词/表名/操作/时间范围筛选 + v_audit_log_timeline 时间线）
   ⚠️ 9.4 已实测：operation 值域 = INSERT/UPDATE/DELETE（大写，audit_trigger_func）；
   log_operate 写入的行 operation 为 NULL → 仅「全部」可见 -->
 <template>
   <div class="audit-log-page art-full-height">
     <ElCard class="art-table-card">
-      <el-tabs v-model="activeTab">
+      <el-tabs v-model="activeTab" @tab-change="handleTabChange">
         <el-tab-pane label="日志列表" name="list">
-          <div class="flex flex-wrap items-center gap-3 p-4">
-            <ElInput
-              v-model="filters.query"
-              placeholder="关键词（表名/操作人等）"
-              clearable
-              class="w-52"
-              @keyup.enter="handleSearch"
-              @clear="handleSearch"
-            />
-            <ElInput
-              v-model="filters.table_name"
-              placeholder="表名"
-              clearable
-              class="w-40"
-              @keyup.enter="handleSearch"
-              @clear="handleSearch"
-            />
-            <ElSelect
-              v-model="filters.operation"
-              clearable
-              placeholder="操作"
-              class="w-36"
-              @change="handleSearch"
-            >
-              <ElOption label="INSERT" value="INSERT" />
-              <ElOption label="UPDATE" value="UPDATE" />
-              <ElOption label="DELETE" value="DELETE" />
-            </ElSelect>
-            <ElButton type="primary" @click="handleSearch">搜索</ElButton>
-            <ElButton @click="handleReset">重置</ElButton>
-          </div>
+          <AuditLogSearch v-model="searchForm" @search="handleSearch" @reset="resetSearch" />
+
+          <ArtTableHeader v-model:columns="columnChecks" :loading="loading" @refresh="getData" />
 
           <ArtTable
             :loading="loading"
@@ -49,7 +21,7 @@
         </el-tab-pane>
 
         <el-tab-pane label="时间线" name="timeline">
-          <AuditTimeline />
+          <AuditTimeline ref="timelineRef" />
         </el-tab-pane>
       </el-tabs>
     </ElCard>
@@ -59,6 +31,7 @@
 <script setup lang="ts">
   import { useTableColumns } from '@/hooks/core/useTableColumns'
   import { searchAuditLog } from '@/api/audit'
+  import AuditLogSearch from './modules/audit-log-search.vue'
   import AuditTimeline from './modules/audit-timeline.vue'
   import { ElTag } from 'element-plus'
 
@@ -67,11 +40,23 @@
   type AuditLog = Api.SystemManage.AuditLog
 
   const activeTab = ref('list')
-  const filters = reactive({
+  const timelineRef = ref<InstanceType<typeof AuditTimeline>>()
+
+  // 切换到时间线 tab 时刷新（时间线组件可能因 keep-alive 缓存未重新挂载）
+  const handleTabChange = (name: string | number) => {
+    if (name === 'timeline') {
+      timelineRef.value?.loadTimeline()
+    }
+  }
+
+  // 搜索表单（单一数据源：搜索/重置/分页均基于此；ArtSearchBar 空值自动剔除）
+  const defaultSearchForm = () => ({
     query: '',
     table_name: '',
-    operation: ''
+    operation: '',
+    date_range: [] as [string, string] | []
   })
+  const searchForm = ref(defaultSearchForm())
 
   const loading = ref(false)
   const data = ref<AuditLog[]>([])
@@ -81,9 +66,11 @@
     loading.value = true
     try {
       const result = await searchAuditLog({
-        query: filters.query || null,
-        table_name: filters.table_name || null,
-        operation: filters.operation || null,
+        query: searchForm.value.query || null,
+        table_name: searchForm.value.table_name || null,
+        operation: searchForm.value.operation || null,
+        start_date: searchForm.value.date_range?.[0] || null,
+        end_date: searchForm.value.date_range?.[1] || null,
         limit: pagination.size,
         offset: (pagination.current - 1) * pagination.size
       })
@@ -98,15 +85,17 @@
     }
   }
 
-  const handleSearch = () => {
+  // 搜索 → 合并清洗后参数并跳回第 1 页（分页跳转规范：搜索/重置/改每页条数均回第 1 页）
+  const handleSearch = (params: any) => {
+    Object.assign(searchForm.value, defaultSearchForm(), params)
     pagination.current = 1
     getData()
   }
-  const handleReset = () => {
-    filters.query = ''
-    filters.table_name = ''
-    filters.operation = ''
-    handleSearch()
+  // 重置 → 恢复默认条件并跳回第 1 页
+  const resetSearch = () => {
+    searchForm.value = defaultSearchForm()
+    pagination.current = 1
+    getData()
   }
   const handleSizeChange = (size: number) => {
     pagination.size = size
@@ -124,7 +113,7 @@
     DELETE: 'danger'
   }
 
-  const { columns } = useTableColumns<AuditLog>(() => [
+  const { columns, columnChecks } = useTableColumns<AuditLog>(() => [
     { type: 'index', width: 60, label: '序号' },
     { prop: 'table_name', label: '表名', minWidth: 130, formatter: (row) => row.table_name || '-' },
     {

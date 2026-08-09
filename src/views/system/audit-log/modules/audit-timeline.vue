@@ -27,7 +27,8 @@
   const loading = ref(false)
   const items = ref<Api.SystemManage.AuditLogTimeline[]>([])
 
-  onMounted(async () => {
+  /** 时间线数据加载（暴露给父组件在 tab 激活时调用） */
+  const loadTimeline = async () => {
     loading.value = true
     try {
       const result = await getAuditLogTimeline({})
@@ -38,5 +39,9 @@
     } finally {
       loading.value = false
     }
-  })
+  }
+
+  onMounted(loadTimeline)
+
+  defineExpose({ loadTimeline })
 </script>

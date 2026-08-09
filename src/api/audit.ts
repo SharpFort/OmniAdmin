@@ -7,13 +7,22 @@
  * - v_audit_log_timeline 视图查询（log_date/change_count/unique_users，无 old_data/new_data）
  */
 import { postRpc, getViewPage } from './request'
+import { toIsoLocal } from '@/utils/date'
 
-/** 审计日志搜索（search_audit_log；关键词/表名/操作筛选） */
+/** 审计日志搜索（search_audit_log；关键词/表名/操作/时间范围筛选）
+ *  036 起 RPC 支持：p_query 匹配操作人+变更内容、p_table_name 模糊、时间范围。
+ *  时间约定：start_date/end_date 传本地时间字符串（"YYYY-MM-DD" 或 "YYYY-MM-DD HH:mm:ss"），
+ *  本层统一补 23:59:59 并转 ISO（PostgREST timestamptz 无歧义解析）。
+ */
 export function searchAuditLog(
   params: {
     query?: string | null
     table_name?: string | null
     operation?: string | null
+    /** 开始时间（本地时间；date-only 视为当天 00:00:00） */
+    start_date?: string | null
+    /** 结束时间（本地时间；date-only 自动补到当天 23:59:59，左闭右闭） */
+    end_date?: string | null
     limit?: number
     offset?: number
   } = {}
@@ -22,6 +31,8 @@ export function searchAuditLog(
     p_query: params.query ?? null,
     p_table_name: params.table_name ?? null,
     p_operation: params.operation ?? null,
+    p_start_date: toIsoLocal(params.start_date),
+    p_end_date: toIsoLocal(params.end_date, true),
     p_limit: params.limit ?? 20,
     p_offset: params.offset ?? 0
   })

@@ -3,44 +3,7 @@
 <template>
   <div class="login-log-page art-full-height">
     <ElCard class="art-table-card">
-      <div class="flex flex-wrap items-center gap-3 p-4">
-        <ElSelect
-          v-model="filters.user_id"
-          filterable
-          clearable
-          placeholder="用户"
-          class="w-48"
-          @change="handleSearch"
-        >
-          <ElOption
-            v-for="user in userOptions"
-            :key="user.id"
-            :label="user.username"
-            :value="user.id"
-          />
-        </ElSelect>
-        <ElSelect
-          v-model="filters.result"
-          clearable
-          placeholder="结果"
-          class="w-32"
-          @change="handleSearch"
-        >
-          <ElOption label="成功" value="success" />
-          <ElOption label="失败" value="failure" />
-        </ElSelect>
-        <el-date-picker
-          v-model="dateRange"
-          type="daterange"
-          range-separator="至"
-          start-placeholder="开始时间"
-          end-placeholder="结束时间"
-          value-format="YYYY-MM-DD HH:mm:ss"
-          class="w-72"
-          @change="handleSearch"
-        />
-        <ElButton @click="handleReset">重置</ElButton>
-      </div>
+      <LoginLogSearch v-model="searchForm" @search="handleSearch" @reset="resetSearch" />
 
       <ArtTableHeader v-model:columns="columnChecks" :loading="loading" @refresh="getData" />
 
@@ -69,7 +32,7 @@
 <script setup lang="ts">
   import { useTableColumns } from '@/hooks/core/useTableColumns'
   import { searchLoginLogs } from '@/api/system-manage'
-  import { getUserList } from '@/api/system-manage'
+  import LoginLogSearch from './modules/login-log-search.vue'
   import { PostgrestRequestError } from '@/api/request'
   import { ElTag } from 'element-plus'
 
@@ -77,12 +40,13 @@
 
   type LoginLog = Api.SystemManage.LoginLog
 
-  const filters = reactive({
+  // 搜索表单（单一数据源：搜索/重置/分页均基于此；ArtSearchBar 空值自动剔除）
+  const defaultSearchForm = () => ({
     user_id: '',
-    result: ''
+    result: '',
+    date_range: [] as [string, string] | []
   })
-  const dateRange = ref<[string, string] | null>(null)
-  const userOptions = ref<Array<{ id: string; username: string }>>([])
+  const searchForm = ref(defaultSearchForm())
 
   const loading = ref(false)
   const permissionDenied = ref(false)
@@ -93,10 +57,10 @@
     loading.value = true
     try {
       const result = await searchLoginLogs({
-        user_id: filters.user_id || undefined,
-        result: filters.result || undefined,
-        from: dateRange.value?.[0],
-        to: dateRange.value?.[1],
+        user_id: searchForm.value.user_id || null,
+        result: searchForm.value.result || null,
+        from: searchForm.value.date_range?.[0] || null,
+        to: searchForm.value.date_range?.[1] || null,
         limit: pagination.size,
         offset: (pagination.current - 1) * pagination.size
       })
@@ -119,15 +83,17 @@
     }
   }
 
-  const handleSearch = () => {
+  // 搜索 → 合并清洗后参数并跳回第 1 页（分页跳转规范：搜索/重置/改每页条数均回第 1 页）
+  const handleSearch = (params: any) => {
+    Object.assign(searchForm.value, defaultSearchForm(), params)
     pagination.current = 1
     getData()
   }
-  const handleReset = () => {
-    filters.user_id = ''
-    filters.result = ''
-    dateRange.value = null
-    handleSearch()
+  // 重置 → 恢复默认条件并跳回第 1 页
+  const resetSearch = () => {
+    searchForm.value = defaultSearchForm()
+    pagination.current = 1
+    getData()
   }
   const handleSizeChange = (size: number) => {
     pagination.size = size
@@ -178,17 +144,5 @@
     }
   ])
 
-  onMounted(async () => {
-    getData()
-    // 用户下拉（v_user_list，仅取前 100）
-    try {
-      const result = await getUserList({ limit: 100, offset: 0 })
-      userOptions.value = result.items.map((user) => ({
-        id: user.id,
-        username: user.username
-      }))
-    } catch (error) {
-      console.warn('加载用户下拉失败:', error)
-    }
-  })
+  onMounted(getData)
 </script>
