@@ -187,13 +187,13 @@ export function getMenuList(
 }
 
 /** 创建菜单（rpc_create_menu 16 参；sys:menu:create；038 签名：+remark/route_name/query/is_link/is_iframe/redirect/keep_alive；
- * ⚠️ p_menu_type 传 'link' 时后端自动置 is_link=true） */
+ * ⚠️ p_menu_type 传 'link' 时后端自动置 is_link=true；044 参数改名 p_perms→p_api_code/p_path→p_router */
 export function createMenu(params: {
   p_menu_name: string
   p_parent_id?: string | null
   p_menu_type?: 'directory' | 'menu' | 'button' | 'link'
-  p_perms?: string | null
-  p_path?: string | null
+  p_api_code?: string | null
+  p_router?: string | null
   p_component?: string | null
   p_icon?: string | null
   p_order_num?: number
@@ -210,8 +210,8 @@ export function createMenu(params: {
     p_menu_name: params.p_menu_name,
     p_parent_id: params.p_parent_id ?? null,
     p_menu_type: params.p_menu_type ?? 'menu',
-    p_perms: params.p_perms ?? null,
-    p_path: params.p_path ?? null,
+    p_api_code: params.p_api_code ?? null,
+    p_router: params.p_router ?? null,
     p_component: params.p_component ?? null,
     p_icon: params.p_icon ?? null,
     p_order_num: params.p_order_num ?? 0,
@@ -226,15 +226,24 @@ export function createMenu(params: {
   })
 }
 
+/** 菜单-接口批量绑定/解绑（rpc_set_menu_apis；046：全量对齐选中集合——选中绑定、未选解绑回池；
+ * 🔐 sys:menu:update；事务原子） */
+export function setMenuApis(params: { p_menu_id: string; p_api_ids: string[] }) {
+  return postRpc<Api.Common.ApiOk>('rpc_set_menu_apis', {
+    p_menu_id: params.p_menu_id,
+    p_api_ids: params.p_api_ids
+  })
+}
+
 /** 更新菜单（rpc_update_menu 18 参；sys:menu:update；038 签名：+remark/route_name/query/is_link/is_iframe/redirect/keep_alive；
- * ⚠️ 改离 link 需显式传 p_is_link=false） */
+ * ⚠️ 改离 link 需显式传 p_is_link=false；044 参数改名 p_perms→p_api_code/p_path→p_router */
 export function updateMenu(params: {
   p_id: string
   p_parent_id?: string | null
   p_menu_name?: string | null
   p_menu_type?: string | null
-  p_perms?: string | null
-  p_path?: string | null
+  p_api_code?: string | null
+  p_router?: string | null
   p_component?: string | null
   p_icon?: string | null
   p_order_num?: number | null
@@ -253,8 +262,8 @@ export function updateMenu(params: {
     p_parent_id: params.p_parent_id ?? null,
     p_menu_name: params.p_menu_name ?? null,
     p_menu_type: params.p_menu_type ?? null,
-    p_perms: params.p_perms ?? null,
-    p_path: params.p_path ?? null,
+    p_api_code: params.p_api_code ?? null,
+    p_router: params.p_router ?? null,
     p_component: params.p_component ?? null,
     p_icon: params.p_icon ?? null,
     p_order_num: params.p_order_num ?? null,

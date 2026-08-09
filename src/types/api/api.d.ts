@@ -161,8 +161,10 @@ declare namespace Api {
       parent_id: string | null
       menu_name: string
       menu_type: Common.MenuType
-      perms: string | null
-      path: string | null
+      /** 044 列改名：perms → api_code（单码制：与 iam_api.api_code 同码） */
+      api_code: string | null
+      /** 044 列改名：path → router（前端路由地址；link 类型为外链 URL） */
+      router: string | null
       component: string | null
       icon: string | null
       order_num: number
@@ -492,6 +494,8 @@ declare namespace Api {
       api_group: string | null
       /** 039 新增：归属菜单 id（一键授权 join key） */
       menu_id: string | null
+      /** 044 新增：排序（资源树接口叶子在父节点下的顺序） */
+      order_num: number
       created_at: string
       updated_at: string
     }
