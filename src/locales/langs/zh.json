@@ -304,7 +304,7 @@
       "api": "API 管理",
       "dept": "部门管理",
       "position": "岗位管理",
-      "dict": "字典管理",
+      "dict": "字典类型",
       "tenant": "租户管理",
       "userTenant": "用户租户",
       "userRole": "用户角色",

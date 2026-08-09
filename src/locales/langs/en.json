@@ -304,7 +304,7 @@
       "api": "API Management",
       "dept": "Departments",
       "position": "Positions",
-      "dict": "Dictionaries",
+      "dict": "Dictionary Types",
       "tenant": "Tenants",
       "userTenant": "User Tenants",
       "userRole": "User Roles",

@@ -1,4 +1,4 @@
-<!-- 字典管理（dict_type 视图类型表 + dict_data 视图数据项子表 + 6 个 CRUD RPC）
+<!-- 字典类型（dict_type 视图类型表 + dict_data 视图数据项子表 + 6 个 CRUD RPC）
   数据源说明：管理操作用 dict_type/dict_data 视图（含 id/status/remark 全字段）；
   v_dict_list 仅作聚合展示（无 id 不可删改） -->
 <template>
