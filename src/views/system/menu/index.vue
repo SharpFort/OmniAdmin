@@ -38,7 +38,12 @@
           名称内容按 level 手动 padding-left 逐级缩进（目录-菜单-按钮三级层次） -->
         <template #menu_name="{ row }">
           <div class="menu-name-cell" :style="{ paddingLeft: `${(row.level || 0) * 24}px` }">
-            <ArtSvgIcon v-if="row.kind === 'menu' && row.icon" :icon="row.icon" :size="16" />
+            <!-- 固定 16px 图标槽位（按钮/接口行留空）：标题前占位恒为 22px，
+                标题严格按层级 +24px 步进；否则带图标行的图标+间距(22px≈层级步长)
+                会吃掉一层缩进，造成「目录↔菜单」「菜单↔按钮」视觉假对齐 -->
+            <span class="menu-cell-icon">
+              <ArtSvgIcon v-if="row.kind === 'menu' && row.icon" :icon="row.icon" :size="16" />
+            </span>
             <ElTag
               v-if="row.kind === 'api'"
               :type="methodTagType(row.method)"
@@ -547,6 +552,15 @@
     gap: 6px;
     align-items: center;
     white-space: nowrap;
+  }
+
+  /* 固定宽度图标槽位（16px + gap 6px = 22px 恒定占位）：无图标行留空，
+     标题严格按层级步进，避免图标宽度（≈层级步长 24px）吃掉一层缩进 */
+  .menu-cell-icon {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    width: 16px;
   }
 
   /* 名称列 cell 禁止换行：行内布局下（placeholder/箭头 + 层级 padding）宽度逼近列宽时，
