@@ -29,13 +29,15 @@
         :data="filteredTree"
         :stripe="false"
         :border="true"
-        :indent="12"
+        :indent="0"
         :tree-props="{ children: 'children', hasChildren: 'hasChildren' }"
         :default-expand-all="false"
       >
-        <!-- 名称列：菜单=图标+名称；接口=方法Tag+名称 -->
+        <!-- 名称列：菜单=图标+名称；接口=方法Tag+名称
+          树形缩进 sharpfort 同款：EP 原生 indent 归零（箭头左对齐），
+          名称内容按 level 手动 padding-left 逐级缩进（目录-菜单-按钮三级层次） -->
         <template #menu_name="{ row }">
-          <div class="menu-name-cell">
+          <div class="menu-name-cell" :style="{ paddingLeft: `${(row.level || 0) * 24}px` }">
             <ArtSvgIcon v-if="row.kind === 'menu' && row.icon" :icon="row.icon" :size="16" />
             <ElTag
               v-if="row.kind === 'api'"
@@ -141,6 +143,8 @@
     keep_alive: boolean
     /** 上级选择时不可选（接口节点不可作为挂载点） */
     disabled?: boolean
+    /** 树层级（sharpfort 同款：目录=0，逐级 +1，名称列缩进用） */
+    level?: number
     children?: ResourceNode[]
   }
 
@@ -299,6 +303,14 @@
       nodes.forEach((n) => n.children?.length && sortNodes(n.children))
     }
     sortNodes(roots)
+    // 计算层级（sharpfort 同款：目录=0，逐级 +1，名称列缩进）
+    const setLevel = (nodes: ResourceNode[], level = 0) => {
+      nodes.forEach((n) => {
+        n.level = level
+        if (n.children?.length) setLevel(n.children, level + 1)
+      })
+    }
+    setLevel(roots)
     return roots
   }
 
@@ -325,7 +337,8 @@
     {
       prop: 'menu_name',
       label: '名称',
-      minWidth: 220,
+      minWidth: 240,
+      className: 'menu-name-col',
       useSlot: true
     },
     {
@@ -527,10 +540,20 @@
 </script>
 
 <style scoped>
+  /* inline-flex：与 EP 树形箭头同行排列（块级 flex 会换行并忽略前置缩进 span，
+     sharpfort 名称列缩进依赖 inline 布局 + level padding-left） */
   .menu-name-cell {
-    display: flex;
+    display: inline-flex;
     gap: 6px;
     align-items: center;
+    white-space: nowrap;
+  }
+
+  /* 名称列 cell 禁止换行：行内布局下（placeholder/箭头 + 层级 padding）宽度逼近列宽时，
+     防止整个名称块折行到第二行（折行会把 inline-flex 块弹回 cell 左缘、破坏缩进）。
+     用列级 className（EP 生成的 el-table_N_column_M 类名随实例 id 变化，不可依赖） */
+  :deep(.menu-name-col > .cell) {
+    white-space: nowrap;
   }
 
   .menu-title {
