@@ -1,4 +1,5 @@
-<!-- 菜单/接口资源树管理页（044 字段改名后重写：资源树一体化——目录-菜单-按钮树形 + 接口挂载叶子；
+<!-- 菜单资源树管理页（055 单表化重写：纯 iam_menu 树——目录-菜单-按钮，端点信息内嵌按钮行；
+  SharpFort 单表模型；接口管理页已并入本页（按钮行 api_url/api_method 直接编辑）；
   借鉴 sharpfort-net-vue menu 页面：搜索栏 + 树表格 + 类型Tag + 名称列图标 + 新增下级/编辑/删除） -->
 <template>
   <div class="menu-page art-full-height">
@@ -33,24 +34,28 @@
         :tree-props="{ children: 'children', hasChildren: 'hasChildren' }"
         :default-expand-all="false"
       >
-        <!-- 名称列：菜单=图标+名称；接口=方法Tag+名称
+        <!-- 名称列：菜单=图标+名称；按钮=方法Tag+名称
           树形缩进 sharpfort 同款：EP 原生 indent 归零（箭头左对齐），
           名称内容按 level 手动 padding-left 逐级缩进（目录-菜单-按钮三级层次） -->
         <template #menu_name="{ row }">
           <div class="menu-name-cell" :style="{ paddingLeft: `${(row.level || 0) * 24}px` }">
-            <!-- 固定 16px 图标槽位（按钮/接口行留空）：标题前占位恒为 22px，
+            <!-- 固定 16px 图标槽位（按钮行留空）：标题前占位恒为 22px，
                 标题严格按层级 +24px 步进；否则带图标行的图标+间距(22px≈层级步长)
                 会吃掉一层缩进，造成「目录↔菜单」「菜单↔按钮」视觉假对齐 -->
             <span class="menu-cell-icon">
-              <ArtSvgIcon v-if="row.kind === 'menu' && row.icon" :icon="row.icon" :size="16" />
+              <ArtSvgIcon
+                v-if="row.menu_type !== 'button' && row.icon"
+                :icon="row.icon"
+                :size="16"
+              />
             </span>
             <ElTag
-              v-if="row.kind === 'api'"
-              :type="methodTagType(row.method)"
+              v-if="row.menu_type === 'button' && row.api_method"
+              :type="methodTagType(row.api_method)"
               size="small"
               class="method-tag"
             >
-              {{ row.method }}
+              {{ row.api_method }}
             </ElTag>
             <span class="menu-title">{{ row.menu_name }}</span>
           </div>
@@ -73,31 +78,24 @@
           </ElTag>
         </template>
 
-        <!-- 操作列：目录/菜单=新增下级/编辑/删除；按钮=编辑/删除（绑定在编辑弹窗内）；接口=解绑（数据删除在 API 页） -->
+        <!-- 操作列：目录/菜单=新增下级/编辑/删除；按钮=编辑/删除（端点信息在编辑弹窗内） -->
         <template #operation="{ row }">
           <ElSpace :size="4">
             <ElButton
-              v-if="row.kind === 'menu' && row.menu_type !== 'button'"
+              v-if="row.menu_type !== 'button'"
               link
               type="primary"
               @click="handleAddChild(row)"
             >
               新增下级
             </ElButton>
-            <ElButton v-if="row.kind === 'menu'" link type="primary" @click="handleEdit(row)"
-              >编辑</ElButton
-            >
-            <ElButton v-if="row.kind === 'api'" link type="warning" @click="handleUnbind(row)"
-              >解绑</ElButton
-            >
-            <ElButton v-if="row.kind === 'menu'" link type="danger" @click="handleDelete(row)"
-              >删除</ElButton
-            >
+            <ElButton link type="primary" @click="handleEdit(row)">编辑</ElButton>
+            <ElButton link type="danger" @click="handleDelete(row)">删除</ElButton>
           </ElSpace>
         </template>
       </ArtTable>
 
-      <!-- 资源弹窗（菜单/按钮/接口动态表单） -->
+      <!-- 菜单弹窗（菜单/按钮动态表单；055 单表化后端点直接编辑） -->
       <MenuDialog
         v-model:visible="dialogVisible"
         :type="dialogType"
@@ -111,7 +109,7 @@
 
 <script setup lang="ts">
   import { useTableColumns } from '@/hooks/core/useTableColumns'
-  import { getMenuList, getApiList, deleteMenu, setMenuApis } from '@/api/system-manage'
+  import { getMenuList, deleteMenu } from '@/api/system-manage'
   import { isSuperAdmin } from '@/hooks/core/usePermission'
   import { useUserStore } from '@/store/modules/user'
   import MenuDialog from './modules/menu-dialog.vue'
@@ -120,25 +118,19 @@
 
   defineOptions({ name: 'Menus' })
 
-  /** 资源树节点（合成：iam_menu 树形 + iam_api 挂载叶子；044 新字段 router/api_code） */
+  /** 菜单树节点（iam_menu 全列；055 单表化后无接口叶子——端点内嵌按钮行） */
   type ResourceNode = {
     id: string
-    kind: 'menu' | 'api'
-    menu_type?: Api.Common.MenuType
+    menu_type: Api.Common.MenuType
     parent_id: string | null
-    menu_id: string | null
     menu_name: string
     api_code: string | null
     router: string | null
-    path: string | null
-    method: string | null
     component: string | null
     icon: string | null
     order_num: number
     is_visible: boolean
     is_active: boolean
-    api_group: string | null
-    description: string | null
     remark: string | null
     route_name: string | null
     query: string | null
@@ -146,8 +138,9 @@
     is_iframe: boolean
     redirect: string | null
     keep_alive: boolean
-    /** 上级选择时不可选（接口节点不可作为挂载点） */
-    disabled?: boolean
+    api_url: string | null
+    api_method: string | null
+    is_affix: boolean
     /** 树层级（sharpfort 同款：目录=0，逐级 +1，名称列缩进用） */
     level?: number
     children?: ResourceNode[]
@@ -190,14 +183,13 @@
           { label: '目录', value: 'directory' },
           { label: '菜单', value: 'menu' },
           { label: '按钮', value: 'button' },
-          { label: '外链', value: 'link' },
-          { label: '接口', value: 'api' }
+          { label: '外链', value: 'link' }
         ]
       }
     }
   ])
 
-  /** 类型展示配置（接口=danger 区分；目录/菜单/按钮/外链沿用既有配色） */
+  /** 类型展示配置（目录/菜单/按钮/外链沿用既有配色） */
   const TYPE_CONFIG: Record<
     string,
     { type: 'info' | 'primary' | 'warning' | 'success' | 'danger'; text: string }
@@ -205,13 +197,10 @@
     directory: { type: 'info', text: '目录' },
     menu: { type: 'primary', text: '菜单' },
     button: { type: 'warning', text: '按钮' },
-    link: { type: 'success', text: '外链' },
-    api: { type: 'danger', text: '接口' }
+    link: { type: 'success', text: '外链' }
   }
-  const getTypeConfig = (row: ResourceNode) => {
-    const key = row.kind === 'api' ? 'api' : row.menu_type || ''
-    return TYPE_CONFIG[key] || { type: 'info' as const, text: '未知' }
-  }
+  const getTypeConfig = (row: ResourceNode) =>
+    TYPE_CONFIG[row.menu_type] || { type: 'info' as const, text: '未知' }
 
   /** HTTP 方法 Tag 配色 */
   const methodTagType = (method: string | null) => {
@@ -225,31 +214,22 @@
     return map[method || ''] || 'info'
   }
 
-  /** 合成资源树：菜单树（parent_id）→ 接口叶子（menu_id 挂载）；无归属接口平铺视图兜底 */
-  const buildResourceTree = (
-    menus: Api.Menu.MenuAdminNode[],
-    apis: Api.SystemManage.ApiAdminNode[]
-  ): ResourceNode[] => {
+  /** 构建菜单树（iam_menu 单数据源；055 单表化） */
+  const buildMenuTree = (menus: Api.Menu.MenuAdminNode[]): ResourceNode[] => {
     const nodeMap = new Map<string, ResourceNode>()
     menus.forEach((m) => {
       nodeMap.set(m.id, {
         id: m.id,
-        kind: 'menu',
         menu_type: m.menu_type,
         parent_id: m.parent_id,
-        menu_id: null,
         menu_name: m.menu_name,
         api_code: m.api_code,
         router: m.router,
-        path: null,
-        method: null,
         component: m.component,
         icon: m.icon,
         order_num: m.order_num,
         is_visible: m.is_visible,
         is_active: m.is_active,
-        api_group: null,
-        description: null,
         remark: m.remark,
         route_name: m.route_name,
         query: m.query,
@@ -257,6 +237,9 @@
         is_iframe: m.is_iframe,
         redirect: m.redirect,
         keep_alive: m.keep_alive,
+        api_url: m.api_url,
+        api_method: m.api_method,
+        is_affix: m.is_affix,
         children: []
       })
     })
@@ -269,40 +252,7 @@
         roots.push(node)
       }
     })
-    // 接口叶子挂载（disabled：不可作为上级挂载点）
-    apis.forEach((a) => {
-      const apiNode: ResourceNode = {
-        id: a.id,
-        kind: 'api',
-        parent_id: null,
-        menu_id: a.menu_id,
-        menu_name: a.name,
-        api_code: a.api_code,
-        router: null,
-        path: a.path,
-        method: a.method,
-        component: null,
-        icon: null,
-        order_num: a.order_num,
-        is_visible: true,
-        is_active: a.is_active,
-        api_group: a.api_group,
-        description: a.description,
-        remark: null,
-        route_name: null,
-        query: null,
-        is_link: false,
-        is_iframe: false,
-        redirect: null,
-        keep_alive: true,
-        disabled: true
-      }
-      if (a.menu_id && nodeMap.has(a.menu_id)) {
-        nodeMap.get(a.menu_id)!.children!.push(apiNode)
-      }
-      // 无归属接口：树不展示（接口平铺视图兜底）
-    })
-    // 排序（菜单 order_num；接口 order_num）
+    // 排序（order_num）
     const sortNodes = (nodes: ResourceNode[]) => {
       nodes.sort((x, y) => x.order_num - y.order_num)
       nodes.forEach((n) => n.children?.length && sortNodes(n.children))
@@ -322,14 +272,11 @@
   const loadResourceTree = async (): Promise<void> => {
     loading.value = true
     try {
-      const [menuRes, apiRes] = await Promise.all([
-        getMenuList({ limit: 1000, offset: 0 }),
-        getApiList({ limit: 1000, offset: 0 })
-      ])
-      treeData.value = buildResourceTree(menuRes.items, apiRes.items)
+      const menuRes = await getMenuList({ limit: 1000, offset: 0 })
+      treeData.value = buildMenuTree(menuRes.items)
       filteredTree.value = treeData.value
     } catch (error) {
-      console.error('获取资源树失败:', error)
+      console.error('获取菜单树失败:', error)
       treeData.value = []
       filteredTree.value = []
     } finally {
@@ -353,16 +300,16 @@
       useSlot: true
     },
     {
-      prop: 'path',
-      label: '路径',
-      minWidth: 160,
-      formatter: (row) => (row.kind === 'api' ? row.path || '-' : row.router || '-')
+      prop: 'api_url',
+      label: '路由/接口',
+      minWidth: 180,
+      formatter: (row) => (row.menu_type === 'button' ? row.api_url || '-' : row.router || '-')
     },
     {
       prop: 'component',
       label: '组件',
       minWidth: 130,
-      formatter: (row) => (row.kind === 'menu' ? row.component || '-' : '-')
+      formatter: (row) => (row.menu_type === 'menu' ? row.component || '-' : '-')
     },
     {
       prop: 'api_code',
@@ -393,7 +340,7 @@
     {
       prop: 'operation',
       label: '操作',
-      width: 190,
+      width: 180,
       align: 'right',
       fixed: 'right',
       useSlot: true
@@ -404,16 +351,13 @@
   const matchNode = (node: ResourceNode): boolean => {
     const q = formFilters.query?.trim().toLowerCase()
     if (q) {
-      const haystack = [node.menu_name, node.path, node.router, node.api_code]
+      const haystack = [node.menu_name, node.api_url, node.router, node.api_code]
         .filter(Boolean)
         .join(' ')
         .toLowerCase()
       if (!haystack.includes(q)) return false
     }
-    if (formFilters.menu_type) {
-      const nodeType = node.kind === 'api' ? 'api' : node.menu_type
-      if (nodeType !== formFilters.menu_type) return false
-    }
+    if (formFilters.menu_type && node.menu_type !== formFilters.menu_type) return false
     return true
   }
   const filterTree = (nodes: ResourceNode[]): ResourceNode[] => {
@@ -442,7 +386,7 @@
   }
   const handleAddChild = (row: ResourceNode): void => {
     dialogType.value = 'add'
-    // 按父节点类型给默认子类型：目录→菜单；菜单→按钮（按钮是树叶子，接口绑定走编辑弹窗）
+    // 按父节点类型给默认子类型：目录→菜单；菜单→按钮（按钮是树叶子）
     let defaultKind: 'menu' | 'button' = 'menu'
     if (row.menu_type === 'menu') defaultKind = 'button'
     editNode.value = { parentId: row.id, defaultKind }
@@ -454,14 +398,12 @@
     dialogVisible.value = true
   }
 
-  /** 删除菜单节点（按钮：其下接口自动解绑回池——FK ON DELETE SET NULL，数据保留在 API 页；
-   * 目录/菜单：有子节点后端 23503 拒绝） */
+  /** 删除菜单节点（055 单表化：按钮行删除 = 权限点与端点一并删除——iam_menu 行即权限数据本体） */
   const handleDelete = async (row: ResourceNode): Promise<void> => {
     try {
-      const apiChildren = row.children?.filter((c) => c.kind === 'api') || []
       const tip =
-        row.menu_type === 'button' && apiChildren.length > 0
-          ? `确定删除按钮「${row.menu_name}」吗？其下 ${apiChildren.length} 个接口将解除绑定（接口数据保留，可在 API 管理页重新绑定）`
+        row.menu_type === 'button'
+          ? `确定删除按钮「${row.menu_name}」吗？其权限码 ${row.api_code || ''} 与接口端点将一并删除`
           : `确定删除菜单「${row.menu_name}」吗？删除后无法恢复`
       await ElMessageBox.confirm(tip, '提示', {
         confirmButtonText: '确定',
@@ -479,43 +421,6 @@
         console.error('删除失败:', error)
         ElMessage.error(`删除失败：${error?.message || '未知错误'}`)
       }
-    }
-  }
-
-  /** 解绑接口（回未挂载池；rpc_set_menu_apis 全量对齐——父节点剩余绑定集合不变） */
-  const handleUnbind = async (row: ResourceNode): Promise<void> => {
-    try {
-      const parentId = row.menu_id
-      if (!parentId) {
-        ElMessage.info('该接口未绑定任何节点')
-        return
-      }
-      // 找父节点剩余接口集合
-      const findParent = (nodes: ResourceNode[]): ResourceNode | null => {
-        for (const n of nodes) {
-          if (n.children?.some((c) => c.id === row.id)) return n
-          const found = n.children?.length ? findParent(n.children) : null
-          if (found) return found
-        }
-        return null
-      }
-      const parent = findParent(treeData.value)
-      const remaining = (parent?.children || [])
-        .filter((c) => c.kind === 'api' && c.id !== row.id)
-        .map((c) => c.id)
-
-      await ElMessageBox.confirm(
-        `确定解绑接口「${row.menu_name}」吗？解绑后回到未绑定池，可在其他按钮或 API 管理页重新绑定`,
-        '提示',
-        { confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning' }
-      )
-      await setMenuApis({ p_menu_id: parentId, p_api_ids: remaining })
-      ElMessage.success('解绑成功')
-      loadResourceTree()
-    } catch (error: any) {
-      if (error === 'cancel' || error === 'close') return
-      console.error('解绑失败:', error)
-      ElMessage.error(`解绑失败：${error?.message || '未知错误'}`)
     }
   }
 

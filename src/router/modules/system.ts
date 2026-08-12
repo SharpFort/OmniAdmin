@@ -66,16 +66,6 @@ export const systemRoutes: AppRouteRecord = {
       }
     },
     {
-      path: 'api',
-      name: 'Api',
-      component: '/system/api',
-      meta: {
-        title: 'menus.system.api',
-        keepAlive: true,
-        roles: ['role_super_admin', 'tenant_admin']
-      }
-    },
-    {
       path: 'dept',
       name: 'Dept',
       component: '/system/dept',

@@ -1,5 +1,6 @@
-<!-- 菜单资源弹窗（046 分工：API 数据在 API 管理页维护，菜单页按钮通过"选择"绑定已有接口——
-  多选绑定选择器 + rpc_set_menu_apis 全量对齐；借鉴 sharpfort-net-vue menu-dialog 交互） -->
+<!-- 菜单资源弹窗（055 单表化重写：端点信息直接内嵌按钮行编辑——api_url/api_method 成对，
+  SharpFort 单表模型；按钮行导航字段禁用/清空对齐 D8；删除 046 绑定接口选择器与 040 软校验——
+  权限点=按钮行自身（一码多端点合法，重复码不再提示）） -->
 <template>
   <ElDialog
     :model-value="visible"
@@ -9,7 +10,7 @@
     class="el-dialog-border"
     @update:model-value="emit('update:visible', $event)"
   >
-    <!-- 角色授权提示条（sharpfort 同款：新按钮/接口需去角色管理授权） -->
+    <!-- 角色授权提示条（sharpfort 同款：新按钮/菜单需去角色管理授权） -->
     <div class="role-hint-banner">
       <div class="hint-icon-wrapper">
         <svg viewBox="0 0 24 24" fill="none" class="hint-icon">
@@ -23,9 +24,9 @@
         </svg>
       </div>
       <span class="hint-text">
-        新建/修改的菜单、按钮与接口绑定，请去
+        新建/修改的菜单与按钮，请去
         <button type="button" class="hint-link" @click="goToRole">角色管理</button>
-        页面授权，否则用户看不到对应功能
+        页面勾选授权，否则用户看不到对应功能
       </span>
     </div>
 
@@ -96,6 +97,27 @@
           </ElFormItem>
         </ElCol>
 
+        <!-- ↓↓↓ 按钮节点：端点信息直接编辑（055 单表化——端点内嵌按钮行，成对必填 D6） ↓↓↓ -->
+        <ElCol :span="12" v-if="form.menu_type === 'button'">
+          <ElFormItem label="接口路径" prop="api_url">
+            <ElInput v-model.trim="form.api_url" placeholder="如 /rpc/sys:dept:create" clearable />
+          </ElFormItem>
+        </ElCol>
+        <ElCol :span="12" v-if="form.menu_type === 'button'">
+          <ElFormItem label="接口方法" prop="api_method">
+            <ElSelect v-model="form.api_method" class="w-full" clearable placeholder="选择方法">
+              <ElOption label="GET" value="GET" />
+              <ElOption label="POST" value="POST" />
+              <ElOption label="PUT" value="PUT" />
+              <ElOption label="PATCH" value="PATCH" />
+              <ElOption label="DELETE" value="DELETE" />
+              <ElOption label="HEAD" value="HEAD" />
+              <ElOption label="OPTIONS" value="OPTIONS" />
+              <ElOption label="*（全部）" value="*" />
+            </ElSelect>
+          </ElFormItem>
+        </ElCol>
+
         <ElCol :span="12" v-if="form.menu_type !== 'button'">
           <ElFormItem label="路由地址" prop="router">
             <ElInput
@@ -136,15 +158,10 @@
 
         <ElCol :span="12">
           <ElFormItem label="权限码" prop="api_code">
-            <ElInput
-              v-model.trim="form.api_code"
-              placeholder="如 sys:user:delete"
-              clearable
-              @blur="handleApiCodeBlur"
-            />
+            <ElInput v-model.trim="form.api_code" placeholder="如 sys:user:delete" clearable />
           </ElFormItem>
           <div v-if="form.menu_type === 'button'" class="text-xs opacity-60">
-            按钮权限码必填（单码制：建议与接口权限码同码）
+            按钮权限码必填（单码制；一码多端点 = 多个按钮行同码）
           </div>
         </ElCol>
 
@@ -159,6 +176,7 @@
                 :disabled="form.menu_type === 'link'"
               />
               <ElCheckbox v-model="form.is_iframe" label="iframe" />
+              <ElCheckbox v-model="form.is_affix" label="固定标签" />
             </ElSpace>
           </ElFormItem>
         </ElCol>
@@ -170,37 +188,6 @@
               :rows="2"
               placeholder="备注说明（可选）"
             />
-          </ElFormItem>
-        </ElCol>
-
-        <!-- ↓↓↓ 按钮节点：绑定接口（选择已有接口，不重复输入；046 分工） ↓↓↓ -->
-        <ElCol v-if="form.menu_type === 'button'" :span="24">
-          <ElDivider content-position="left">
-            <span class="api-section-title">绑定接口（1:N，从 API 管理页已建接口中选择）</span>
-          </ElDivider>
-          <ElFormItem label="已绑定接口">
-            <ElSelect
-              v-model="form.bound_api_ids"
-              multiple
-              filterable
-              collapse-tags
-              collapse-tags-tooltip
-              :max-collapse-tags="3"
-              placeholder="选择接口（可多选；未选中的将解除绑定）"
-              class="w-full"
-            >
-              <ElOption
-                v-for="api in bindableApis"
-                :key="api.id"
-                :label="`${api.method} ${api.path}${api.name ? ' — ' + api.name : ''}`"
-                :value="api.id"
-              />
-            </ElSelect>
-            <div class="text-xs opacity-60 mt-1">
-              选项 = 未绑定接口 + 当前已绑定；接口数据在
-              <button type="button" class="hint-link" @click="goToApiPage">API 管理</button>
-              页面维护（新建/编辑/删除）
-            </div>
           </ElFormItem>
         </ElCol>
 
@@ -221,31 +208,24 @@
 
 <script setup lang="ts">
   import { useRouter } from 'vue-router'
-  import { createMenu, updateMenu, setMenuApis, getApiList } from '@/api/system-manage'
-  import { getView } from '@/api/request'
+  import { createMenu, updateMenu } from '@/api/system-manage'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import { ElMessage } from 'element-plus'
   import type { FormInstance, FormRules } from 'element-plus'
 
-  /** 资源节点（与 index.vue 同构） */
+  /** 菜单节点（iam_menu 全列；055 单表化后无接口叶子） */
   type ResourceNode = {
     id: string
-    kind: 'menu' | 'api'
     menu_type?: Api.Common.MenuType
     parent_id: string | null
-    menu_id: string | null
     menu_name: string
     api_code: string | null
     router: string | null
-    path: string | null
-    method: string | null
     component: string | null
     icon: string | null
     order_num: number
     is_visible: boolean
     is_active: boolean
-    api_group: string | null
-    description: string | null
     remark: string | null
     route_name: string | null
     query: string | null
@@ -253,13 +233,15 @@
     is_iframe: boolean
     redirect: string | null
     keep_alive: boolean
+    api_url: string | null
+    api_method: string | null
+    is_affix: boolean
     disabled?: boolean
     children?: ResourceNode[]
   }
 
   const router = useRouter()
   const goToRole = () => router.push({ name: 'Role' })
-  const goToApiPage = () => router.push({ name: 'Api' })
 
   interface Props {
     visible: boolean
@@ -298,12 +280,13 @@
     is_link: false,
     is_iframe: false,
     keep_alive: true,
+    is_affix: false,
     api_code: '',
+    api_url: '',
+    api_method: '',
     remark: '',
     is_visible: true,
-    is_active: true,
-    // 绑定接口（仅按钮）
-    bound_api_ids: [] as string[]
+    is_active: true
   })
 
   const rules = reactive<FormRules>({
@@ -337,33 +320,22 @@
         },
         trigger: 'blur'
       }
+    ],
+    api_url: [
+      {
+        validator: (_rule, value: string, callback) => {
+          // 055 D6：接口路径/方法成对（表级 CHECK 兜底，前端友好报错）
+          if (form.menu_type === 'button' && value?.trim() && !form.api_method) {
+            return callback(new Error('填写接口路径后必须选择接口方法'))
+          }
+          callback()
+        },
+        trigger: 'blur'
+      }
     ]
   })
 
-  /** 040 软提示：录入的权限码未在 iam_api.api_code 中找到时提示（仅提示不阻断） */
-  const apiCodeSet = ref<Set<string>>(new Set())
-  const loadApiCodes = async (): Promise<void> => {
-    try {
-      const rows = await getView<{ api_code: string | null }>('iam_api', {
-        select: 'api_code',
-        limit: 1000
-      })
-      apiCodeSet.value = new Set(rows.map((r) => r.api_code).filter((c): c is string => !!c))
-    } catch (error) {
-      console.warn('拉取权限点列表失败（软提示不可用）:', error)
-    }
-  }
-  const handleApiCodeBlur = (): void => {
-    const code = form.api_code?.trim()
-    if (!code) return
-    if (!apiCodeSet.value.has(code)) {
-      ElMessage.warning(
-        `权限码「${code}」未在权限点（iam_api.api_code）中找到，建议先建权限点再配按钮（单码制对齐）`
-      )
-    }
-  }
-
-  /** 上级选项（过滤自身及子树，避免环；接口节点 disabled 不可选） */
+  /** 上级选项（过滤自身及子树，避免环） */
   const parentOptions = computed(() => {
     const editId = props.type === 'edit' ? (props.node as ResourceNode)?.id : null
     const excluded = new Set<string>()
@@ -379,37 +351,33 @@
     const mapNode = (node: ResourceNode): any => ({
       id: node.id,
       menu_name: node.menu_name,
-      disabled: node.kind === 'api',
+      disabled: node.menu_type === 'button',
       children: node.children?.filter((child) => !excluded.has(child.id)).map(mapNode)
     })
     return props.tree.filter((node) => !excluded.has(node.id)).map(mapNode)
   })
 
-  /** 绑定选择器选项池：未绑定接口 + 当前按钮已绑（弹窗打开时拉取全量 iam_api） */
-  const apiPool = ref<Api.SystemManage.ApiAdminNode[]>([])
-  const bindableApis = computed(() => {
-    const boundIds = new Set(form.bound_api_ids)
-    return apiPool.value.filter((a) => a.menu_id == null || boundIds.has(a.id))
-  })
-  const loadApiPool = async (): Promise<void> => {
-    try {
-      const result = await getApiList({ limit: 1000, offset: 0 })
-      apiPool.value = result.items
-    } catch (error) {
-      console.warn('拉取接口池失败（绑定选择器不可用）:', error)
-      apiPool.value = []
-    }
-  }
-
-  /** 类型联动：link → 自动 is_link、清空 component；改离 link 放开 is_link */
+  /** 类型联动（055 对齐 D8/D6）：
+   *  button → 清空导航字段（router/component/redirect/query/route_name），端点成对校验；
+   *  改离 button → 清空端点字段（权限字段归属按最终类型） */
   watch(
     () => form.menu_type,
     (val) => {
       if (val === 'link') {
         form.is_link = true
         form.component = ''
+      } else if (val === 'button') {
+        form.router = ''
+        form.component = ''
+        form.redirect = ''
+        form.query = ''
+        form.route_name = ''
       } else if (props.type === 'edit' && (props.node as ResourceNode)?.menu_type === 'link') {
         form.is_link = false
+      }
+      if (val !== 'button') {
+        form.api_url = ''
+        form.api_method = ''
       }
     }
   )
@@ -436,11 +404,13 @@
         is_link: false,
         is_iframe: false,
         keep_alive: true,
+        is_affix: false,
         api_code: '',
+        api_url: '',
+        api_method: '',
         remark: '',
         is_visible: true,
-        is_active: true,
-        bound_api_ids: []
+        is_active: true
       })
 
       if (props.type === 'add') {
@@ -460,16 +430,15 @@
         form.is_link = node.is_link
         form.is_iframe = node.is_iframe
         form.keep_alive = node.keep_alive
+        form.is_affix = node.is_affix
         form.api_code = node.api_code || ''
+        form.api_url = node.api_url || ''
+        form.api_method = node.api_method || ''
         form.remark = node.remark || ''
         form.is_visible = node.is_visible
         form.is_active = node.is_active
-        // 已绑定接口（按钮下挂载的接口叶子）
-        form.bound_api_ids = (node.children || []).filter((c) => c.kind === 'api').map((c) => c.id)
       }
       formRef.value?.clearValidate()
-      loadApiCodes()
-      loadApiPool()
     }
   )
 
@@ -487,33 +456,29 @@
         p_menu_name: form.menu_name,
         p_parent_id: form.parent_id,
         p_menu_type: form.menu_type,
-        p_api_code: form.api_code.trim() || null,
-        p_router: form.router.trim() || null,
-        p_component: form.component.trim() || null,
+        p_api_code: form.menu_type === 'button' ? form.api_code.trim() || null : null,
+        p_router: form.menu_type === 'button' ? null : form.router.trim() || null,
+        p_component: form.menu_type === 'button' ? null : form.component.trim() || null,
         p_icon: form.icon.trim() || null,
         p_order_num: form.order_num,
         p_is_visible: form.is_visible,
         p_remark: form.remark.trim() || null,
-        p_route_name: form.route_name.trim() || null,
-        p_query: form.query.trim() || null,
+        p_route_name: form.menu_type === 'button' ? null : form.route_name.trim() || null,
+        p_query: form.menu_type === 'button' ? null : form.query.trim() || null,
         p_is_link: form.is_link,
         p_is_iframe: form.is_iframe,
-        p_redirect: form.redirect.trim() || null,
-        p_keep_alive: form.keep_alive
+        p_redirect: form.menu_type === 'button' ? null : form.redirect.trim() || null,
+        p_keep_alive: form.keep_alive,
+        // 055：端点仅按钮行（成对 D6）
+        p_api_url: form.menu_type === 'button' ? form.api_url.trim() || null : null,
+        p_api_method: form.menu_type === 'button' ? form.api_method || null : null,
+        p_is_affix: form.is_affix
       }
 
       if (props.type === 'add') {
-        const res = await createMenu(menuParams)
-        // 按钮：绑定选中接口（rpc_set_menu_apis 全量对齐）
-        if (form.menu_type === 'button' && form.bound_api_ids.length && res.id) {
-          await setMenuApis({ p_menu_id: res.id, p_api_ids: form.bound_api_ids })
-        }
+        await createMenu(menuParams)
       } else if (node) {
         await updateMenu({ ...menuParams, p_id: node.id, p_is_active: form.is_active })
-        // 按钮：绑定全量对齐（未选中的解绑回池）
-        if (form.menu_type === 'button') {
-          await setMenuApis({ p_menu_id: node.id, p_api_ids: form.bound_api_ids })
-        }
       }
       ElMessage.success(props.type === 'add' ? '创建成功' : '更新成功')
       emit('update:visible', false)
@@ -639,10 +604,5 @@
 
   .icon-item.active {
     border-color: #409eff;
-  }
-
-  .api-section-title {
-    font-size: 13px;
-    color: #606266;
   }
 </style>

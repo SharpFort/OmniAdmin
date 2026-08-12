@@ -149,6 +149,8 @@ declare namespace Api {
       query: string | null
       /** Vue Router name（非空时优先后端值） */
       route_name: string | null
+      /** 055 新增：标签页固定（多页签布局） */
+      is_affix: boolean
       meta: {
         title: string
         icon: string | null
@@ -178,6 +180,13 @@ declare namespace Api {
       is_iframe: boolean
       redirect: string | null
       keep_alive: boolean
+      // ↓↓↓ 055 单表化新增（SharpFort ApiUrl/ApiMethod + Admin.NET IsAffix）↓↓↓
+      /** 055 新增：API 端点路径（原 iam_api.path；仅 button 行使用） */
+      api_url: string | null
+      /** 055 新增：API 端点方法（原 iam_api.method；api_url 非空时必填） */
+      api_method: string | null
+      /** 055 新增：标签页固定 */
+      is_affix: boolean
       created_at: string
       updated_at: string
     }
@@ -421,21 +430,23 @@ declare namespace Api {
       menu_count: number
     }
 
-    /** 角色-API 明细（v_role_api_detail；usePermission 数据源，含 api_code） */
-    interface RoleApiPerm {
+    /** 角色-菜单明细行（v_role_menu_detail；055 单表化后 usePermission 数据源——
+     * 角色权限码 = role_menu → menu.api_code（button 行），v_role_api_detail 已随 iam_role_api 删除） */
+    interface RoleMenuPerm {
       role_id: string
-      api_id: string
+      menu_id: string
       role_code: string
       role_name: string
-      path: string
-      method: string
-      api_name: string
-      api_code: string
-      /** 039 新增：展示分组名（回填=归属菜单名） */
-      api_group: string | null
-      /** 039 新增：归属菜单 id（一键授权 join key） */
-      menu_id: string | null
-      api_is_active: boolean
+      menu_name: string
+      menu_type: string
+      /** 055 单表化：按钮权限码（v_role_menu_detail.permission_code = iam_menu.api_code） */
+      permission_code: string | null
+      menu_path: string | null
+      menu_icon: string | null
+      menu_parent_id: string | null
+      api_url: string | null
+      api_method: string | null
+      is_affix: boolean
     }
 
     /** 角色数据范围（rpc_get_role_data_scope；042） */
@@ -468,7 +479,7 @@ declare namespace Api {
     /** @deprecated 使用 RolePermissionDetail */
     type RolePermissions = RolePermissionDetail
 
-    /** @deprecated 使用 RoleApiPerm / ApiAdminNode（iam_api） */
+    /** @deprecated 使用 RoleMenuPerm（055 单表化：权限码 = v_role_menu_detail.permission_code） */
     interface ApiItem {
       id: string
       api_code: string | null
@@ -479,25 +490,6 @@ declare namespace Api {
       is_active: boolean
       created_at?: string
       updated_at?: string
-    }
-
-    /** API 权限点管理数据源（iam_api 视图全列；039 起含分组/归属） */
-    interface ApiAdminNode {
-      id: string
-      path: string
-      method: string
-      name: string
-      description: string | null
-      api_code: string | null
-      is_active: boolean
-      /** 039 新增：展示分组名（13 组已回填，默认=归属菜单名） */
-      api_group: string | null
-      /** 039 新增：归属菜单 id（一键授权 join key） */
-      menu_id: string | null
-      /** 044 新增：排序（资源树接口叶子在父节点下的顺序） */
-      order_num: number
-      created_at: string
-      updated_at: string
     }
 
     /** @deprecated v_role_list 行（Phase 5 迁移） */

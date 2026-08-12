@@ -138,15 +138,8 @@ export function getRolePermissions(roleCode: string) {
   })
 }
 
-/** 角色→API 绑定（rpc_set_role_apis；全量覆盖，sys:role-api:bind；数组参数） */
-export function setRoleApis(roleCode: string, apiCodes: string[]) {
-  return postRpc<Api.Common.ApiOk>('rpc_set_role_apis', {
-    p_role_code: roleCode,
-    p_api_codes: apiCodes
-  })
-}
-
-/** 角色→菜单绑定（rpc_set_role_menus；全量覆盖，sys:role-menu:bind；数组参数） */
+/** 角色→菜单绑定（rpc_set_role_menus；全量覆盖，sys:role-menu:bind；数组参数；
+ * 055 单表化后为唯一授权保存通道——API 授权随按钮菜单勾选继承） */
 export function setRoleMenus(roleCode: string, menuIds: string[]) {
   return postRpc<Api.Common.ApiOk>('rpc_set_role_menus', {
     p_role_code: roleCode,
@@ -186,8 +179,10 @@ export function getMenuList(
   })
 }
 
-/** 创建菜单（rpc_create_menu 16 参；sys:menu:create；038 签名：+remark/route_name/query/is_link/is_iframe/redirect/keep_alive；
- * ⚠️ p_menu_type 传 'link' 时后端自动置 is_link=true；044 参数改名 p_perms→p_api_code/p_path→p_router */
+/** 创建菜单（rpc_create_menu；sys:menu:create；038 签名：+remark/route_name/query/is_link/is_iframe/redirect/keep_alive；
+ * 044 参数改名 p_perms→p_api_code/p_path→p_router；055 +p_api_url/p_api_method/p_is_affix——
+ * 端点内嵌按钮行（SharpFort 单表化）；⚠️ button 行禁传 router/component（D8），api_url/api_method 成对（D6）；
+ * ⚠️ p_menu_type 传 'link' 时后端自动置 is_link=true */
 export function createMenu(params: {
   p_menu_name: string
   p_parent_id?: string | null
@@ -205,6 +200,9 @@ export function createMenu(params: {
   p_is_iframe?: boolean | null
   p_redirect?: string | null
   p_keep_alive?: boolean | null
+  p_api_url?: string | null
+  p_api_method?: string | null
+  p_is_affix?: boolean | null
 }) {
   return postRpc<Api.Common.ApiOk>('rpc_create_menu', {
     p_menu_name: params.p_menu_name,
@@ -222,21 +220,16 @@ export function createMenu(params: {
     p_is_link: params.p_is_link ?? null,
     p_is_iframe: params.p_is_iframe ?? null,
     p_redirect: params.p_redirect ?? null,
-    p_keep_alive: params.p_keep_alive ?? null
+    p_keep_alive: params.p_keep_alive ?? null,
+    p_api_url: params.p_api_url ?? null,
+    p_api_method: params.p_api_method ?? null,
+    p_is_affix: params.p_is_affix ?? null
   })
 }
 
-/** 菜单-接口批量绑定/解绑（rpc_set_menu_apis；046：全量对齐选中集合——选中绑定、未选解绑回池；
- * 🔐 sys:menu:update；事务原子） */
-export function setMenuApis(params: { p_menu_id: string; p_api_ids: string[] }) {
-  return postRpc<Api.Common.ApiOk>('rpc_set_menu_apis', {
-    p_menu_id: params.p_menu_id,
-    p_api_ids: params.p_api_ids
-  })
-}
-
-/** 更新菜单（rpc_update_menu 18 参；sys:menu:update；038 签名：+remark/route_name/query/is_link/is_iframe/redirect/keep_alive；
- * ⚠️ 改离 link 需显式传 p_is_link=false；044 参数改名 p_perms→p_api_code/p_path→p_router */
+/** 更新菜单（rpc_update_menu；sys:menu:update；038 签名：+remark/route_name/query/is_link/is_iframe/redirect/keep_alive；
+ * 044 参数改名 p_perms→p_api_code/p_path→p_router；055 +p_api_url/p_api_method/p_is_affix——
+ * ⚠️ 改离 link 需显式传 p_is_link=false；改类型时导航/端点字段按最终类型归属（D8/D6） */
 export function updateMenu(params: {
   p_id: string
   p_parent_id?: string | null
@@ -256,6 +249,9 @@ export function updateMenu(params: {
   p_is_iframe?: boolean | null
   p_redirect?: string | null
   p_keep_alive?: boolean | null
+  p_api_url?: string | null
+  p_api_method?: string | null
+  p_is_affix?: boolean | null
 }) {
   return postRpc<Api.Common.ApiOk>('rpc_update_menu', {
     p_id: params.p_id,
@@ -275,7 +271,10 @@ export function updateMenu(params: {
     p_is_link: params.p_is_link ?? null,
     p_is_iframe: params.p_is_iframe ?? null,
     p_redirect: params.p_redirect ?? null,
-    p_keep_alive: params.p_keep_alive ?? null
+    p_keep_alive: params.p_keep_alive ?? null,
+    p_api_url: params.p_api_url ?? null,
+    p_api_method: params.p_api_method ?? null,
+    p_is_affix: params.p_is_affix ?? null
   })
 }
 
@@ -284,83 +283,9 @@ export function deleteMenu(menuId: string) {
   return postRpc<Api.Common.ApiOk>('rpc_delete_menu', { p_id: menuId })
 }
 
-/** API 权限点列表（iam_api 视图，分页；039 起含 api_group/menu_id 分组归属） */
-export function getApiList(
-  params: {
-    query?: string
-    apiGroup?: string
-    limit?: number
-    offset?: number
-  } = {}
-) {
-  const filters: Record<string, string> = {}
-  if (params.query) filters['name'] = `ilike.*${params.query}*`
-  if (params.apiGroup) filters['api_group'] = `eq.${params.apiGroup}`
-  return getViewPage<Api.SystemManage.ApiAdminNode>('iam_api', {
-    limit: params.limit ?? 50,
-    offset: params.offset ?? 0,
-    order: 'api_group.asc,path.asc',
-    filters
-  })
-}
-
-/** 创建 API 权限点（rpc_create_api；🔐 sys:api:create；path+method 重复/api_code 重复拒绝 22023；
- * p_api_group 留空且选了归属菜单时后端自动取 menu_name） */
-export function createApi(params: {
-  p_path: string
-  p_method: string
-  p_name: string
-  p_api_code?: string | null
-  p_description?: string | null
-  p_is_active?: boolean
-  p_menu_id?: string | null
-  p_api_group?: string | null
-}) {
-  return postRpc<Api.Common.ApiOk>('rpc_create_api', {
-    p_path: params.p_path,
-    p_method: params.p_method,
-    p_name: params.p_name,
-    p_api_code: params.p_api_code ?? null,
-    p_description: params.p_description ?? null,
-    p_is_active: params.p_is_active ?? true,
-    p_menu_id: params.p_menu_id ?? null,
-    p_api_group: params.p_api_group ?? null
-  })
-}
-
-/** 更新 API 权限点（rpc_update_api；🔐 sys:api:update；NULL=不改，文本传 '' 清空，
- * p_menu_id 传零 uuid 哨兵取消归属） */
-export function updateApi(params: {
-  p_id: string
-  p_path?: string | null
-  p_method?: string | null
-  p_name?: string | null
-  p_api_code?: string | null
-  p_description?: string | null
-  p_is_active?: boolean | null
-  p_menu_id?: string | null
-  p_api_group?: string | null
-}) {
-  return postRpc<Api.Common.ApiOk>('rpc_update_api', {
-    p_id: params.p_id,
-    p_path: params.p_path ?? null,
-    p_method: params.p_method ?? null,
-    p_name: params.p_name ?? null,
-    p_api_code: params.p_api_code ?? null,
-    p_description: params.p_description ?? null,
-    p_is_active: params.p_is_active ?? null,
-    p_menu_id: params.p_menu_id ?? null,
-    p_api_group: params.p_api_group ?? null
-  })
-}
-
-/** 删除 API 权限点（rpc_delete_api；🔐 sys:api:delete；有角色绑定 → 23503 需先解绑） */
-export function deleteApi(apiId: string) {
-  return postRpc<Api.Common.ApiOk>('rpc_delete_api', { p_id: apiId })
-}
-
 // ============================================================================
-// 角色数据范围 / 菜单子树 API 一键授权（041/042）
+// 角色数据范围（042；055 单表化后 API 授权并入菜单树勾选——rpc_set_role_apis /
+// rpc_set_menu_apis / API CRUD RPC 已随 iam_api/iam_role_api 删除，不再封装）
 // ============================================================================
 
 /** 角色数据范围查询（rpc_get_role_data_scope；🔐 sys:data-scope:bind） */
@@ -380,22 +305,6 @@ export function setRoleDataScope(
     p_role_code: roleCode,
     p_scope_type: scopeType,
     p_dept_ids: deptIds ?? null
-  })
-}
-
-/** 一键授权：授予角色「菜单及全部子孙菜单归属的 API」增量（rpc_grant_menu_subtree_apis；🔐 sys:role-api:bind） */
-export function grantMenuSubtreeApis(roleCode: string, menuId: string) {
-  return postRpc<{ ok: boolean; granted: number; total: number }>('rpc_grant_menu_subtree_apis', {
-    p_role_code: roleCode,
-    p_menu_id: menuId
-  })
-}
-
-/** 一键撤销（对称；前端取消勾选场景） */
-export function revokeMenuSubtreeApis(roleCode: string, menuId: string) {
-  return postRpc<{ ok: boolean; removed: number }>('rpc_revoke_menu_subtree_apis', {
-    p_role_code: roleCode,
-    p_menu_id: menuId
   })
 }
 
