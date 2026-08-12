@@ -8,7 +8,7 @@
       <ArtTableHeader v-model:columns="columnChecks" :loading="loading" @refresh="getData">
         <template #left>
           <ElButton
-            v-perm="'sys:position:assign'"
+            v-perm="'public:position:assign'"
             type="primary"
             v-ripple
             @click="assignVisible = true"

@@ -106,7 +106,7 @@ export const usePermission = () => {
 
   /**
    * 判断当前用户是否具备权限点
-   * @param code 后端权限码（如 'sys:dept:create'）；'*' 恒真（超管）
+   * @param code 后端权限码（如 'public:dept:create'）；'*' 恒真（超管）
    */
   const hasPerm = async (code: string): Promise<boolean> => {
     if (isSuperAdmin(userStore.info?.roles)) return true

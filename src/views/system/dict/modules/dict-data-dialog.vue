@@ -7,7 +7,12 @@
     @update:model-value="emit('update:visible', $event)"
   >
     <div class="mb-3 flex items-center gap-2">
-      <ElButton v-perm="'sys:dict:create'" type="primary" size="small" @click="showDialog('add')">
+      <ElButton
+        v-perm="'public:dict:create'"
+        type="primary"
+        size="small"
+        @click="showDialog('add')"
+      >
         新增数据项
       </ElButton>
     </div>

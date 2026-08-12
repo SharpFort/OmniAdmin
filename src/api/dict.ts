@@ -3,7 +3,7 @@
  *
  * - v_dict_list：类型+数据项聚合（items 为 json 数组）
  * - dict_type / dict_data：视图查询（分页）
- * - 6 个 CRUD RPC（sys:dict:create/update/delete；全局字典仅超管）
+ * - 6 个 CRUD RPC（public:dict:create/update/delete；全局字典仅超管）
  */
 import { postRpc, getViewPage } from './request'
 
@@ -54,7 +54,7 @@ export function getDictDataList(
   })
 }
 
-/** 创建字典类型（rpc_create_dict_type；sys:dict:create） */
+/** 创建字典类型（rpc_create_dict_type；public:dict:create） */
 export function createDictType(params: {
   p_dict_name: string
   p_dict_label: string
@@ -69,7 +69,7 @@ export function createDictType(params: {
   })
 }
 
-/** 更新字典类型（rpc_update_dict_type；sys:dict:update） */
+/** 更新字典类型（rpc_update_dict_type；public:dict:update） */
 export function updateDictType(params: {
   p_id: string
   p_dict_label?: string | null
@@ -84,12 +84,12 @@ export function updateDictType(params: {
   })
 }
 
-/** 删除字典类型（rpc_delete_dict_type；sys:dict:delete；级联清理数据项） */
+/** 删除字典类型（rpc_delete_dict_type；public:dict:delete；级联清理数据项） */
 export function deleteDictType(dictTypeId: string) {
   return postRpc<Api.Common.ApiOk>('rpc_delete_dict_type', { p_id: dictTypeId })
 }
 
-/** 创建字典数据项（rpc_create_dict_data；sys:dict:create） */
+/** 创建字典数据项（rpc_create_dict_data；public:dict:create） */
 export function createDictData(params: {
   p_dict_name: string
   p_item_label: string
@@ -108,7 +108,7 @@ export function createDictData(params: {
   })
 }
 
-/** 更新字典数据项（rpc_update_dict_data；sys:dict:update） */
+/** 更新字典数据项（rpc_update_dict_data；public:dict:update） */
 export function updateDictData(params: {
   p_id: string
   p_item_label?: string | null
@@ -129,7 +129,7 @@ export function updateDictData(params: {
   })
 }
 
-/** 删除字典数据项（rpc_delete_dict_data；sys:dict:delete） */
+/** 删除字典数据项（rpc_delete_dict_data；public:dict:delete） */
 export function deleteDictData(dictDataId: string) {
   return postRpc<Api.Common.ApiOk>('rpc_delete_dict_data', { p_id: dictDataId })
 }

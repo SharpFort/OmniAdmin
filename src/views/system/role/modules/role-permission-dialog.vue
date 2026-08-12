@@ -1,7 +1,7 @@
 <!-- 角色权限分配弹窗（055 单表化重写：授权树 = 菜单树勾选——API 授权随按钮菜单勾选继承，
   SharpFort RoleMenu 单绑定模型；删除 API 权限 tab / 041 一键授权联动 / setRoleApis 保存通道；
   按钮叶子行内展示 api_code + api_url/api_method；父子联动保留（checked + halfChecked 合并））
-  042 数据范围：radio 四态 + 自定义部门树多选（rpc_get_dept_tree），独立保存（sys:data-scope:bind） -->
+  042 数据范围：radio 四态 + 自定义部门树多选（rpc_get_dept_tree），独立保存（public:data-scope:bind） -->
 <template>
   <ElDialog
     :model-value="visible"
@@ -73,7 +73,7 @@
               <ElButton
                 type="primary"
                 :loading="scopeSaving"
-                v-perm="'sys:data-scope:bind'"
+                v-perm="'public:data-scope:bind'"
                 @click="handleSaveScope"
               >
                 保存数据范围
@@ -85,7 +85,12 @@
     </div>
     <template #footer>
       <ElButton @click="emit('update:visible', false)">取消</ElButton>
-      <ElButton type="primary" :loading="saving" v-perm="'sys:role-menu:bind'" @click="handleSave">
+      <ElButton
+        type="primary"
+        :loading="saving"
+        v-perm="'public:role-menu:bind'"
+        @click="handleSave"
+      >
         保存
       </ElButton>
     </template>

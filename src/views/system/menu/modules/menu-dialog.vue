@@ -100,7 +100,11 @@
         <!-- ↓↓↓ 按钮节点：端点信息直接编辑（055 单表化——端点内嵌按钮行，成对必填 D6） ↓↓↓ -->
         <ElCol :span="12" v-if="form.menu_type === 'button'">
           <ElFormItem label="接口路径" prop="api_url">
-            <ElInput v-model.trim="form.api_url" placeholder="如 /rpc/sys:dept:create" clearable />
+            <ElInput
+              v-model.trim="form.api_url"
+              placeholder="如 /rpc/rpc_create_department"
+              clearable
+            />
           </ElFormItem>
         </ElCol>
         <ElCol :span="12" v-if="form.menu_type === 'button'">
@@ -158,7 +162,7 @@
 
         <ElCol :span="12">
           <ElFormItem label="权限码" prop="api_code">
-            <ElInput v-model.trim="form.api_code" placeholder="如 sys:user:delete" clearable />
+            <ElInput v-model.trim="form.api_code" placeholder="如 public:user:delete" clearable />
           </ElFormItem>
           <div v-if="form.menu_type === 'button'" class="text-xs opacity-60">
             按钮权限码必填（单码制；一码多端点 = 多个按钮行同码）

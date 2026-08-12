@@ -1,7 +1,7 @@
 /**
  * 租户管理 API（docs/1.前端对齐后端方案-修订版.md §2.2 tenant.ts）
  *
- * - rpc_list_tenants / rpc_list_tenant_members：🔐 sys:tenant:list / sys:tenant-member:list
+ * - rpc_list_tenants / rpc_list_tenant_members：🔐 public:tenant:list / public:tenant-member:list
  *   （035 补绑 tenant_admin；分页上限 100）
  * - user_tenants 视图：用户-组织成员关系投影（⚠️ 与 public.user_role 表不同物，
  *   organization_id = 租户 id，不可与 iam_role_* 的 role_id 互 join）
