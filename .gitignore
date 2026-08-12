@@ -5,6 +5,11 @@ dist-ssr
 *.local
 .cursorrules
 
+# Env files (keep only .env.example template)
+.env
+.env.*
+!.env.example
+
 # Auto-generated files
 src/types/import/auto-imports.d.ts
 src/types/import/components.d.ts
