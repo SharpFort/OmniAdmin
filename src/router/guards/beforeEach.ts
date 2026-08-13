@@ -293,8 +293,8 @@ async function handleDynamicRoutes(
     // 2. 获取菜单数据
     const menuList = await menuProcessor.getMenuList()
 
-    // 3. 验证菜单数据
-    if (!menuProcessor.validateMenuList(menuList)) {
+    // 3. 验证菜单数据（后端模式下空数组 = 合法的「无菜单授权」，放行显示空菜单；仅非数组视为异常）
+    if (!Array.isArray(menuList)) {
       throw new Error('获取菜单列表失败，请重新登录')
     }
 

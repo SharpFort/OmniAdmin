@@ -87,12 +87,16 @@ export class MenuProcessor {
     try {
       items = await getUserMenu()
     } catch (error) {
+      // 仅 RPC 异常（网络/500）回退本地路由兜底，避免用户被锁死在空白页；
+      // 401 由 axios 拦截器处理登出，不经过此处
       console.warn('[MenuProcessor] get_user_menu 获取失败，回退本地 asyncRoutes:', error)
-      items = []
+      return this.fallbackToLocalRoutes()
     }
 
+    // 空数组 = 合法的「无菜单授权」（如角色未绑定任何菜单）：不回退——
+    // 回退会把本地写死路由当授权发放，绕过页面级访问控制
     if (!Array.isArray(items) || items.length === 0) {
-      return this.fallbackToLocalRoutes()
+      return []
     }
 
     // 1. 过滤 button 类型（权限标记不入路由）
