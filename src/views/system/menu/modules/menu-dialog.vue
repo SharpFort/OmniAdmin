@@ -5,7 +5,7 @@
   <ElDialog
     :model-value="visible"
     :title="dialogTitle"
-    width="640px"
+    width="960px"
     align-center
     class="el-dialog-border"
     @update:model-value="emit('update:visible', $event)"
@@ -154,12 +154,6 @@
             <ElInput v-model.trim="form.redirect" placeholder="noRedirect 不自动跳转" clearable />
           </ElFormItem>
         </ElCol>
-        <ElCol :span="12" v-if="form.menu_type === 'menu'">
-          <ElFormItem label="路由参数" prop="query">
-            <ElInput v-model.trim="form.query" placeholder="如 tab=1" clearable />
-          </ElFormItem>
-        </ElCol>
-
         <ElCol :span="12">
           <ElFormItem label="权限码" prop="api_code">
             <ElInput v-model.trim="form.api_code" placeholder="如 public:user:delete" clearable />
@@ -171,17 +165,24 @@
 
         <ElCol :span="24" v-if="form.menu_type !== 'button'">
           <ElFormItem label="菜单配置">
-            <ElSpace wrap>
+            <div class="config-panel">
               <ElCheckbox v-model="form.is_visible" label="显示" />
-              <ElCheckbox v-model="form.keep_alive" label="缓存" />
-              <ElCheckbox
-                v-model="form.is_link"
-                label="外链"
-                :disabled="form.menu_type === 'link'"
-              />
-              <ElCheckbox v-model="form.is_iframe" label="iframe" />
-              <ElCheckbox v-model="form.is_affix" label="固定标签" />
-            </ElSpace>
+              <!-- 低频配置收进折叠区（缓存/外链/iframe/固定标签） -->
+              <ElCollapse class="more-config">
+                <ElCollapseItem title="更多配置" name="more">
+                  <ElSpace wrap>
+                    <ElCheckbox v-model="form.is_cache" label="缓存" />
+                    <ElCheckbox
+                      v-model="form.is_link"
+                      label="外链"
+                      :disabled="form.menu_type === 'link'"
+                    />
+                    <ElCheckbox v-model="form.is_iframe" label="iframe" />
+                    <ElCheckbox v-model="form.is_affix" label="固定标签" />
+                  </ElSpace>
+                </ElCollapseItem>
+              </ElCollapse>
+            </div>
           </ElFormItem>
         </ElCol>
         <ElCol :span="24">
@@ -232,11 +233,10 @@
     is_active: boolean
     remark: string | null
     route_name: string | null
-    query: string | null
     is_link: boolean
     is_iframe: boolean
     redirect: string | null
-    keep_alive: boolean
+    is_cache: boolean
     api_url: string | null
     api_method: string | null
     is_affix: boolean
@@ -278,12 +278,11 @@
     order_num: 0,
     router: '',
     route_name: '',
-    query: '',
     component: '',
     redirect: '',
     is_link: false,
     is_iframe: false,
-    keep_alive: true,
+    is_cache: true,
     is_affix: false,
     api_code: '',
     api_url: '',
@@ -362,7 +361,7 @@
   })
 
   /** 类型联动（055 对齐 D8/D6）：
-   *  button → 清空导航字段（router/component/redirect/query/route_name），端点成对校验；
+   *  button → 清空导航字段（router/component/redirect/route_name），端点成对校验；
    *  改离 button → 清空端点字段（权限字段归属按最终类型） */
   watch(
     () => form.menu_type,
@@ -374,7 +373,6 @@
         form.router = ''
         form.component = ''
         form.redirect = ''
-        form.query = ''
         form.route_name = ''
       } else if (props.type === 'edit' && (props.node as ResourceNode)?.menu_type === 'link') {
         form.is_link = false
@@ -402,12 +400,11 @@
         order_num: 0,
         router: '',
         route_name: '',
-        query: '',
         component: '',
         redirect: '',
         is_link: false,
         is_iframe: false,
-        keep_alive: true,
+        is_cache: true,
         is_affix: false,
         api_code: '',
         api_url: '',
@@ -428,12 +425,11 @@
         form.order_num = node.order_num
         form.router = node.router || ''
         form.route_name = node.route_name || ''
-        form.query = node.query || ''
         form.component = node.component || ''
         form.redirect = node.redirect || ''
         form.is_link = node.is_link
         form.is_iframe = node.is_iframe
-        form.keep_alive = node.keep_alive
+        form.is_cache = node.is_cache
         form.is_affix = node.is_affix
         form.api_code = node.api_code || ''
         form.api_url = node.api_url || ''
@@ -468,11 +464,10 @@
         p_is_visible: form.is_visible,
         p_remark: form.remark.trim() || null,
         p_route_name: form.menu_type === 'button' ? null : form.route_name.trim() || null,
-        p_query: form.menu_type === 'button' ? null : form.query.trim() || null,
         p_is_link: form.is_link,
         p_is_iframe: form.is_iframe,
         p_redirect: form.menu_type === 'button' ? null : form.redirect.trim() || null,
-        p_keep_alive: form.keep_alive,
+        p_is_cache: form.is_cache,
         // 055：端点仅按钮行（成对 D6）
         p_api_url: form.menu_type === 'button' ? form.api_url.trim() || null : null,
         p_api_method: form.menu_type === 'button' ? form.api_method || null : null,
@@ -608,5 +603,33 @@
 
   .icon-item.active {
     border-color: #409eff;
+  }
+
+  /* 菜单配置：显示复选框 + 更多配置折叠区（低频配置收起） */
+  .config-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    width: 100%;
+  }
+
+  .more-config {
+    border: none;
+
+    --el-collapse-header-height: 32px;
+  }
+
+  .more-config :deep(.el-collapse-item__header) {
+    font-size: 13px;
+    color: #64748b;
+    border-bottom: none;
+  }
+
+  .more-config :deep(.el-collapse-item__wrap) {
+    border-bottom: none;
+  }
+
+  .more-config :deep(.el-collapse-item__content) {
+    padding-bottom: 4px;
   }
 </style>

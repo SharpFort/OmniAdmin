@@ -179,7 +179,7 @@ export function getMenuList(
   })
 }
 
-/** 创建菜单（rpc_create_menu；public:menu:create；038 签名：+remark/route_name/query/is_link/is_iframe/redirect/keep_alive；
+/** 创建菜单（rpc_create_menu；public:menu:create；038 签名：+remark/route_name/is_link/is_iframe/redirect/is_cache；
  * 044 参数改名 p_perms→p_api_code/p_path→p_router；055 +p_api_url/p_api_method/p_is_affix——
  * 端点内嵌按钮行（SharpFort 单表化）；⚠️ button 行禁传 router/component（D8），api_url/api_method 成对（D6）；
  * ⚠️ p_menu_type 传 'link' 时后端自动置 is_link=true */
@@ -195,11 +195,10 @@ export function createMenu(params: {
   p_is_visible?: boolean
   p_remark?: string | null
   p_route_name?: string | null
-  p_query?: string | null
   p_is_link?: boolean | null
   p_is_iframe?: boolean | null
   p_redirect?: string | null
-  p_keep_alive?: boolean | null
+  p_is_cache?: boolean | null
   p_api_url?: string | null
   p_api_method?: string | null
   p_is_affix?: boolean | null
@@ -216,18 +215,17 @@ export function createMenu(params: {
     p_is_visible: params.p_is_visible ?? true,
     p_remark: params.p_remark ?? null,
     p_route_name: params.p_route_name ?? null,
-    p_query: params.p_query ?? null,
     p_is_link: params.p_is_link ?? null,
     p_is_iframe: params.p_is_iframe ?? null,
     p_redirect: params.p_redirect ?? null,
-    p_keep_alive: params.p_keep_alive ?? null,
+    p_is_cache: params.p_is_cache ?? null,
     p_api_url: params.p_api_url ?? null,
     p_api_method: params.p_api_method ?? null,
     p_is_affix: params.p_is_affix ?? null
   })
 }
 
-/** 更新菜单（rpc_update_menu；public:menu:update；038 签名：+remark/route_name/query/is_link/is_iframe/redirect/keep_alive；
+/** 更新菜单（rpc_update_menu；public:menu:update；038 签名：+remark/route_name/is_link/is_iframe/redirect/is_cache；
  * 044 参数改名 p_perms→p_api_code/p_path→p_router；055 +p_api_url/p_api_method/p_is_affix——
  * ⚠️ 改离 link 需显式传 p_is_link=false；改类型时导航/端点字段按最终类型归属（D8/D6） */
 export function updateMenu(params: {
@@ -244,11 +242,10 @@ export function updateMenu(params: {
   p_is_visible?: boolean | null
   p_remark?: string | null
   p_route_name?: string | null
-  p_query?: string | null
   p_is_link?: boolean | null
   p_is_iframe?: boolean | null
   p_redirect?: string | null
-  p_keep_alive?: boolean | null
+  p_is_cache?: boolean | null
   p_api_url?: string | null
   p_api_method?: string | null
   p_is_affix?: boolean | null
@@ -267,11 +264,10 @@ export function updateMenu(params: {
     p_is_visible: params.p_is_visible ?? null,
     p_remark: params.p_remark ?? null,
     p_route_name: params.p_route_name ?? null,
-    p_query: params.p_query ?? null,
     p_is_link: params.p_is_link ?? null,
     p_is_iframe: params.p_is_iframe ?? null,
     p_redirect: params.p_redirect ?? null,
-    p_keep_alive: params.p_keep_alive ?? null,
+    p_is_cache: params.p_is_cache ?? null,
     p_api_url: params.p_api_url ?? null,
     p_api_method: params.p_api_method ?? null,
     p_is_affix: params.p_is_affix ?? null

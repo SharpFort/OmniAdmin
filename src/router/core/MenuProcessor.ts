@@ -140,9 +140,8 @@ export class MenuProcessor {
       return normalized.replace(/\/index$/, '')
     }
     if (!path) return undefined
-    // path 可能带 query（038 起 query 拼进 path）——兜底映射取纯路径最后一段
-    const purePath = path.split('?')[0]
-    const lastSegment = purePath.split('/').filter(Boolean).pop() || ''
+    // 兜底映射取 path 最后一段
+    const lastSegment = path.split('/').filter(Boolean).pop() || ''
     return COMPONENT_FALLBACK_MAP[lastSegment]
   }
 
@@ -154,12 +153,10 @@ export class MenuProcessor {
       const isExternalLink = item.menu_type === 'link' || item.is_link === true
       // 038 route_name 优先作为路由 name（非空时）
       const routeName = item.route_name || item.name
-      // 038 query 拼进 path（path?query）
       const rawPath = item.path || item.name
-      const pathWithQuery = item.query ? `${rawPath}?${item.query}` : rawPath
 
       return {
-        path: pathWithQuery,
+        path: rawPath,
         name: routeName,
         component: isExternalLink ? undefined : this.normalizeComponent(item.component, item.path),
         meta: {
@@ -168,8 +165,8 @@ export class MenuProcessor {
           link: isExternalLink ? item.path || undefined : undefined,
           isHide: item.is_visible === false,
           isHideTab: false,
-          // 038 keep_alive 直用后端值（默认 true）
-          keepAlive: item.keep_alive,
+          // 056 起后端列名 is_cache（默认 true）；前端 meta 保持 keepAlive 惯例
+          keepAlive: item.is_cache,
           // 038 iframe 直判
           isIframe: item.is_iframe === true
         },

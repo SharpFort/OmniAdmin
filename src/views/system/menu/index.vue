@@ -30,18 +30,15 @@
         :data="filteredTree"
         :stripe="false"
         :border="true"
-        :indent="0"
+        :indent="24"
         :tree-props="{ children: 'children', hasChildren: 'hasChildren' }"
         :default-expand-all="false"
       >
         <!-- 名称列：菜单=图标+名称；按钮=方法Tag+名称
-          树形缩进 sharpfort 同款：EP 原生 indent 归零（箭头左对齐），
-          名称内容按 level 手动 padding-left 逐级缩进（目录-菜单-按钮三级层次） -->
+          树形缩进：EP 原生 indent=24（折叠箭头与内容整体按层级右移） -->
         <template #menu_name="{ row }">
-          <div class="menu-name-cell" :style="{ paddingLeft: `${(row.level || 0) * 24}px` }">
-            <!-- 固定 16px 图标槽位（按钮行留空）：标题前占位恒为 22px，
-                标题严格按层级 +24px 步进；否则带图标行的图标+间距(22px≈层级步长)
-                会吃掉一层缩进，造成「目录↔菜单」「菜单↔按钮」视觉假对齐 -->
+          <div class="menu-name-cell">
+            <!-- 固定 16px 图标槽位（按钮行留空）：保证同级行名称横向对齐 -->
             <span class="menu-cell-icon">
               <ArtSvgIcon
                 v-if="row.menu_type !== 'button' && row.icon"
@@ -133,16 +130,13 @@
     is_active: boolean
     remark: string | null
     route_name: string | null
-    query: string | null
     is_link: boolean
     is_iframe: boolean
     redirect: string | null
-    keep_alive: boolean
+    is_cache: boolean
     api_url: string | null
     api_method: string | null
     is_affix: boolean
-    /** 树层级（sharpfort 同款：目录=0，逐级 +1，名称列缩进用） */
-    level?: number
     children?: ResourceNode[]
   }
 
@@ -232,11 +226,10 @@
         is_active: m.is_active,
         remark: m.remark,
         route_name: m.route_name,
-        query: m.query,
         is_link: m.is_link,
         is_iframe: m.is_iframe,
         redirect: m.redirect,
-        keep_alive: m.keep_alive,
+        is_cache: m.is_cache,
         api_url: m.api_url,
         api_method: m.api_method,
         is_affix: m.is_affix,
@@ -258,14 +251,6 @@
       nodes.forEach((n) => n.children?.length && sortNodes(n.children))
     }
     sortNodes(roots)
-    // 计算层级（sharpfort 同款：目录=0，逐级 +1，名称列缩进）
-    const setLevel = (nodes: ResourceNode[], level = 0) => {
-      nodes.forEach((n) => {
-        n.level = level
-        if (n.children?.length) setLevel(n.children, level + 1)
-      })
-    }
-    setLevel(roots)
     return roots
   }
 
@@ -284,7 +269,7 @@
     }
   }
 
-  // 表格列配置
+  // 表格列配置（默认显示 9 列；组件路径/路由名称/接口方法默认隐藏，列设置可勾选）
   const { columnChecks, columns } = useTableColumns<ResourceNode>(() => [
     {
       prop: 'menu_name',
@@ -300,21 +285,21 @@
       useSlot: true
     },
     {
-      prop: 'api_url',
-      label: '路由/接口',
-      minWidth: 180,
-      formatter: (row) => (row.menu_type === 'button' ? row.api_url || '-' : row.router || '-')
+      prop: 'router',
+      label: '路由地址',
+      minWidth: 150,
+      formatter: (row) => (row.menu_type === 'button' ? '-' : row.router || '-')
     },
     {
-      prop: 'component',
-      label: '组件',
-      minWidth: 130,
-      formatter: (row) => (row.menu_type === 'menu' ? row.component || '-' : '-')
+      prop: 'api_url',
+      label: '接口路径',
+      minWidth: 180,
+      formatter: (row) => (row.menu_type === 'button' ? row.api_url || '-' : '-')
     },
     {
       prop: 'api_code',
       label: '权限码',
-      minWidth: 120,
+      minWidth: 140,
       formatter: (row) => row.api_code || '-'
     },
     {
@@ -344,6 +329,28 @@
       align: 'right',
       fixed: 'right',
       useSlot: true
+    },
+    // ↓↓↓ 默认隐藏（ArtTableHeader 列设置面板可勾选显示）↓↓↓
+    {
+      prop: 'component',
+      label: '组件路径',
+      minWidth: 130,
+      visible: false,
+      formatter: (row) => (row.menu_type === 'menu' ? row.component || '-' : '-')
+    },
+    {
+      prop: 'route_name',
+      label: '路由名称',
+      minWidth: 130,
+      visible: false,
+      formatter: (row) => row.route_name || '-'
+    },
+    {
+      prop: 'api_method',
+      label: '接口方法',
+      width: 100,
+      visible: false,
+      formatter: (row) => row.api_method || '-'
     }
   ])
 
@@ -450,8 +457,7 @@
 </script>
 
 <style scoped>
-  /* inline-flex：与 EP 树形箭头同行排列（块级 flex 会换行并忽略前置缩进 span，
-     sharpfort 名称列缩进依赖 inline 布局 + level padding-left） */
+  /* inline-flex：与 EP 树形箭头同行排列（块级 flex 会换行并破坏树形缩进） */
   .menu-name-cell {
     display: inline-flex;
     gap: 6px;

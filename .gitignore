@@ -14,3 +14,6 @@ dist-ssr
 src/types/import/auto-imports.d.ts
 src/types/import/components.d.ts
 .auto-import.json
+
+# Local database export files
+数据库文件/

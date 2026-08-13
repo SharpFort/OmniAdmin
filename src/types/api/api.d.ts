@@ -141,12 +141,10 @@ declare namespace Api {
       is_link: boolean
       /** iframe 内嵌 */
       is_iframe: boolean
-      /** 页面缓存（keep-alive，后端默认 true） */
-      keep_alive: boolean
+      /** 页面缓存（keep-alive，后端默认 true；056 列改名 is_cache） */
+      is_cache: boolean
       /** 目录重定向（'noRedirect' 或子路径） */
       redirect: string | null
-      /** 路由参数（如 tab=1，拼进 path 的 query） */
-      query: string | null
       /** Vue Router name（非空时优先后端值） */
       route_name: string | null
       /** 055 新增：标签页固定（多页签布局） */
@@ -175,11 +173,10 @@ declare namespace Api {
       // ↓↓↓ 038 新增 ↓↓↓
       remark: string | null
       route_name: string | null
-      query: string | null
       is_link: boolean
       is_iframe: boolean
       redirect: string | null
-      keep_alive: boolean
+      is_cache: boolean
       // ↓↓↓ 055 单表化新增（SharpFort ApiUrl/ApiMethod + Admin.NET IsAffix）↓↓↓
       /** 055 新增：API 端点路径（原 iam_api.path；仅 button 行使用） */
       api_url: string | null
