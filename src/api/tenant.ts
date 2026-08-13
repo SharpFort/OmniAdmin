@@ -67,12 +67,15 @@ export function getUserRoleDetail(
   params: {
     userId?: string
     query?: string
+    /** 按租户 id 精确过滤（用户租户页搜索栏；v_user_role_detail.tenant_id） */
+    tenantId?: string
     limit?: number
     offset?: number
   } = {}
 ) {
   const filters: Record<string, string> = {}
   if (params.userId) filters['user_id'] = `eq.${params.userId}`
+  if (params.tenantId) filters['tenant_id'] = `eq.${params.tenantId}`
   if (params.query) filters['username'] = `ilike.*${params.query}*`
   return getViewPage<Api.SystemManage.UserTenantRow>('v_user_role_detail', {
     limit: params.limit ?? 50,

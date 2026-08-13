@@ -1,4 +1,4 @@
-<!-- 用户角色搜索栏（ArtSearchBar 声明式配置，与 user/role/login-log 页 *-search.vue 同构） -->
+<!-- 用户角色搜索栏（ArtSearchBar 声明式配置，与 user/tenant/role 页 *-search.vue 同构） -->
 <template>
   <ArtSearchBar
     ref="searchBarRef"
@@ -12,9 +12,12 @@
 </template>
 
 <script setup lang="ts">
+  import { getRoleList } from '@/api/system-manage'
+
   interface Props {
     modelValue: {
       query: string
+      role_code: string
     }
   }
   interface Emits {
@@ -33,6 +36,22 @@
 
   const rules = {}
 
+  // 角色选项（v_role_list；label=角色名（编码），value=角色编码）
+  const roleOptions = ref<Array<{ label: string; value: string }>>([])
+
+  onMounted(async () => {
+    try {
+      const result = await getRoleList({ limit: 1000 })
+      roleOptions.value = result.items.map((item) => ({
+        label: `${item.role_name}（${item.role_code}）`,
+        value: item.role_code
+      }))
+    } catch (error) {
+      console.warn('加载角色选项失败:', error)
+      roleOptions.value = []
+    }
+  })
+
   const formItems = computed(() => [
     {
       label: '用户名',
@@ -40,6 +59,17 @@
       type: 'input',
       placeholder: '按用户名过滤',
       clearable: true
+    },
+    {
+      label: '角色',
+      key: 'role_code',
+      type: 'select',
+      props: {
+        placeholder: '请选择角色',
+        options: roleOptions.value,
+        filterable: true,
+        clearable: true
+      }
     }
   ])
 

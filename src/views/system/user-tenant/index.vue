@@ -34,7 +34,7 @@
   type UserTenantRow = Api.SystemManage.UserTenantRow
 
   // 搜索表单（单一数据源：搜索/重置/分页均基于此；ArtSearchBar 空值自动剔除）
-  const defaultSearchForm = () => ({ query: '' })
+  const defaultSearchForm = () => ({ query: '', tenant_id: '' })
   const searchForm = ref(defaultSearchForm())
 
   const loading = ref(false)
@@ -46,6 +46,7 @@
     try {
       const result = await getUserRoleDetail({
         query: searchForm.value.query || undefined,
+        tenantId: searchForm.value.tenant_id || undefined,
         limit: pagination.size,
         offset: (pagination.current - 1) * pagination.size
       })

@@ -43,7 +43,11 @@ export function getUserList(
   } = {}
 ) {
   const filters: Record<string, string> = {}
-  if (params.query) filters['username'] = `ilike.*${params.query}*`
+  // 关键词多列模糊：用户名/邮箱/姓名（PostgREST or 语法；name 列需后端视图暴露）
+  if (params.query) {
+    filters['or'] =
+      `(username.ilike.*${params.query}*,email.ilike.*${params.query}*,name.ilike.*${params.query}*)`
+  }
   if (params.dept_id) filters['dept_id'] = `eq.${params.dept_id}`
   if (typeof params.is_active === 'boolean') filters['is_active'] = `eq.${params.is_active}`
   return getViewPage<Api.Auth.UserListItem>('v_user_list', {
@@ -59,6 +63,8 @@ export function getUserRoles(
   params: {
     userId?: string
     query?: string
+    /** 按角色编码精确过滤（用户角色页搜索栏） */
+    roleCode?: string
     limit?: number
     offset?: number
     /** 是否包含未分配角色的行（role_code=null；默认 false，弹窗/列表均只需已分配行） */
@@ -67,9 +73,13 @@ export function getUserRoles(
 ) {
   const filters: Record<string, string> = {}
   if (params.userId) filters['user_id'] = `eq.${params.userId}`
+  if (params.roleCode) {
+    filters['role_code'] = `eq.${params.roleCode}`
+  } else if (!params.includeUnassigned) {
+    // 默认排除 LEFT JOIN 空行，保证分页总数与行数一致
+    filters['role_code'] = 'not.is.null'
+  }
   if (params.query) filters['username'] = `ilike.*${params.query}*`
-  // 默认排除 LEFT JOIN 空行，保证分页总数与行数一致
-  if (!params.includeUnassigned) filters['role_code'] = 'not.is.null'
   return getViewPage<Api.Auth.UserRoleRow>('v_user_roles', {
     limit: params.limit ?? 50,
     offset: params.offset ?? 0,

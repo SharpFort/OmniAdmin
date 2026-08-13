@@ -6,7 +6,6 @@
     <ElCard class="art-table-card">
       <ArtTableHeader v-model:columns="columnChecks" :loading="loading" @refresh="refresh">
         <template #left>
-          <ElButton type="primary" v-ripple @click="showLogtoGuide">新增用户</ElButton>
           <span class="text-xs opacity-60">用户的新增/删除/禁用在 Logto Console 侧操作</span>
         </template>
       </ArtTableHeader>
@@ -35,7 +34,7 @@
   import UserSearch from './modules/user-search.vue'
   import UserDialog from './modules/user-dialog.vue'
   import UserRolesDialog from './modules/user-roles-dialog.vue'
-  import { ElTag, ElMessageBox } from 'element-plus'
+  import { ElTag } from 'element-plus'
 
   defineOptions({ name: 'User' })
 
@@ -167,15 +166,6 @@
   ])
 
   onMounted(getData)
-
-  // 新增用户 → Logto Console 引导
-  const showLogtoGuide = () => {
-    ElMessageBox.alert(
-      '用户的新增、删除、禁用、重置密码均在 Logto Console（管理端）操作，前端仅提供列表与资料编辑。',
-      '提示',
-      { confirmButtonText: '知道了', type: 'info' }
-    )
-  }
 
   // 查看角色弹窗
   const showRoles = (row: UserListItem) => {

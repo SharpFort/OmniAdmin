@@ -59,10 +59,10 @@
 
   const formItems = computed(() => [
     {
-      label: '用户名',
+      label: '关键词',
       key: 'query',
       type: 'input',
-      placeholder: '请输入用户名搜索',
+      placeholder: '用户名 / 邮箱 / 姓名',
       clearable: true
     },
     {

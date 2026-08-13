@@ -6,7 +6,6 @@
     <ElCard class="art-table-card">
       <ArtTableHeader v-model:columns="columnChecks" :loading="loading" @refresh="refresh">
         <template #left>
-          <ElButton type="primary" v-ripple @click="showLogtoGuide">新增角色</ElButton>
           <span class="text-xs opacity-60">角色的新增/删除/改名在 Logto Console 侧操作</span>
         </template>
       </ArtTableHeader>
@@ -39,7 +38,7 @@
   import RoleSearch from './modules/role-search.vue'
   import RolePermissionDialog from './modules/role-permission-dialog.vue'
   import RoleMembersDialog from './modules/role-members-dialog.vue'
-  import { ElTag, ElMessageBox } from 'element-plus'
+  import { ElTag } from 'element-plus'
 
   defineOptions({ name: 'Role' })
 
@@ -144,14 +143,6 @@
   ])
 
   onMounted(getData)
-
-  const showLogtoGuide = () => {
-    ElMessageBox.alert(
-      '角色的新增、删除、改名均在 Logto Console（管理端）操作，前端仅提供权限绑定与成员查看。',
-      '提示',
-      { confirmButtonText: '知道了', type: 'info' }
-    )
-  }
 
   const showPermissionDialog = (row: RoleListItem) => {
     currentRoleCode.value = row.role_code

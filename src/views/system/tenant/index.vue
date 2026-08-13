@@ -4,7 +4,13 @@
     <TenantSearch v-model="searchForm" @search="handleSearch" @reset="resetSearch" />
 
     <ElCard class="art-table-card">
-      <ArtTableHeader v-model:columns="columnChecks" :loading="loading" @refresh="getData" />
+      <ArtTableHeader v-model:columns="columnChecks" :loading="loading" @refresh="getData">
+        <template #left>
+          <span class="text-xs opacity-60"
+            >租户（组织）数据为 Logto 镜像，新增/删除/改名在 Logto Console 侧操作</span
+          >
+        </template>
+      </ArtTableHeader>
 
       <ArtTable
         :loading="loading"
