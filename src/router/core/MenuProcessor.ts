@@ -140,6 +140,8 @@ export class MenuProcessor {
   private normalizeComponent(component: string | null, path: string | null): string | undefined {
     if (component && component.trim()) {
       const trimmed = component.trim()
+      // Layout 特判：'/index/index' 是布局容器别名，正则剥尾 /index 会误伤成 '/index'
+      if (trimmed === RoutesAlias.Layout) return trimmed
       const normalized = trimmed.startsWith('/') ? trimmed : `/${trimmed}`
       return normalized.replace(/\/index$/, '')
     }
@@ -324,6 +326,11 @@ export class MenuProcessor {
    * 检测非一级菜单是否错误使用了 / 开头的路径
    */
   private validateMenuPaths(menuList: AppRouteRecord[], level = 1): void {
+    // 后端控制模式：路由树完全来自 get_user_menu，绝对路径子路由是合法设计
+    // （后端已按 router 原样输出，目录行 path 为虚拟前缀，不参与子路由拼接），
+    // 跳过路径合法性校验，避免误报「非一级菜单 path 不能以 / 开头」
+    if (useAppMode().isBackendMode.value) return
+
     menuList.forEach((route) => {
       if (!route.children?.length) return
 
