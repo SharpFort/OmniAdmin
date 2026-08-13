@@ -111,14 +111,17 @@ export class MenuProcessor {
       nodeMap.set(item.id, { ...item })
     })
 
+    // 挂载与 roots 必须统一取 nodeMap 副本：此前父节点 children 挂的是副本、
+    // roots 推的是原对象——根节点永远拿不到已挂载的子节点，目录被当成无子路由
+    // → handleFirstLevelRoute 用 Layout 包裹 Layout（双层侧边栏/表头）且子页面全部失联
     const roots: Array<Api.Menu.MenuRouteItem & { children?: Api.Menu.MenuRouteItem[] }> = []
-    routeItems.forEach((item) => {
-      if (item.parent_id && nodeMap.has(item.parent_id)) {
-        const parent = nodeMap.get(item.parent_id)!
+    nodeMap.forEach((node) => {
+      if (node.parent_id && nodeMap.has(node.parent_id)) {
+        const parent = nodeMap.get(node.parent_id)!
         parent.children = parent.children || []
-        parent.children.push(item)
+        parent.children.push(node)
       } else {
-        roots.push(item)
+        roots.push(node)
       }
     })
 
