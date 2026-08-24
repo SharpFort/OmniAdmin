@@ -2,6 +2,7 @@ import { defineConfig, loadEnv } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import path from 'path'
 import { fileURLToPath } from 'url'
+import zlib from 'node:zlib'
 import vueDevTools from 'vite-plugin-vue-devtools'
 import viteCompression from 'vite-plugin-compression'
 import Components from 'unplugin-vue-components/vite'
@@ -14,10 +15,63 @@ import tailwindcss from '@tailwindcss/vite'
 export default ({ mode }: { mode: string }) => {
   const root = process.cwd()
   const env = loadEnv(mode, root)
-  const { VITE_VERSION, VITE_PORT, VITE_BASE_URL, VITE_API_URL, VITE_API_PROXY_URL } = env
+  const {
+    VITE_VERSION,
+    VITE_PORT,
+    VITE_BASE_URL,
+    VITE_API_URL,
+    VITE_API_PROXY_URL,
+    VITE_LOGTO_ENDPOINT
+  } = env
 
   console.log(`🚀 API_URL = ${VITE_API_URL}`)
   console.log(`🚀 VERSION = ${VITE_VERSION}`)
+
+  const logtoTarget = VITE_LOGTO_ENDPOINT || 'http://localhost:3001'
+  const apiTarget = VITE_API_PROXY_URL || logtoTarget
+
+  /**
+   * Logto 同源代理：转发响应时把 Logto 服务器生成的 http://localhost:3001
+   * 改写为当前前端 origin，解决：
+   *  - iframe 跨站 SameSite Cookie 不发送（未找到会话）
+   *  - 登录提交后 redirectTo 指向 localhost:3001 导致会话丢失
+   */
+  const logtoProxy = (target: string) => ({
+    target,
+    changeOrigin: false,
+    selfHandleResponse: true,
+    configure: (proxy: any) => {
+      proxy.on('proxyRes', (proxyRes: any, req: any, res: any) => {
+        const origin = `http://${req?.headers?.host || 'localhost:3006'}`
+        const chunks: Buffer[] = []
+        proxyRes.on('data', (chunk: Buffer) => chunks.push(chunk))
+        proxyRes.on('end', () => {
+          const raw = Buffer.concat(chunks)
+          const headers: Record<string, any> = { ...proxyRes.headers }
+          const enc = String(headers['content-encoding'] ?? '').toLowerCase()
+          const patch = (input: Buffer) => {
+            const text = input.toString('utf8').split('http://localhost:3001').join(origin)
+            return Buffer.from(text, 'utf8')
+          }
+          let body: Buffer
+          if (enc === 'gzip') {
+            body = zlib.gzipSync(patch(zlib.gunzipSync(raw)))
+          } else if (enc === 'br') {
+            body = zlib.brotliCompressSync(patch(zlib.brotliDecompressSync(raw)))
+          } else {
+            body = patch(raw)
+          }
+          if (headers.location) {
+            headers.location = String(headers.location).split('http://localhost:3001').join(origin)
+          }
+          delete headers['content-length']
+          headers['content-length'] = String(body.length)
+          res.writeHead(proxyRes.statusCode ?? 200, headers)
+          res.end(body)
+        })
+      })
+    }
+  })
 
   return defineConfig({
     define: {
@@ -27,10 +81,15 @@ export default ({ mode }: { mode: string }) => {
     server: {
       port: Number(VITE_PORT),
       proxy: {
-        '/api': {
-          target: VITE_API_PROXY_URL,
-          changeOrigin: true
-        }
+        // Logto 同源代理：转发并改写 http://localhost:3001 → 前端 origin
+        '/oidc': logtoProxy(logtoTarget),
+        '/sign-in': logtoProxy(logtoTarget),
+        '/unknown-session': logtoProxy(logtoTarget),
+        // 静态资源不改写（避免二进制损坏），直接代理
+        '/assets': { target: logtoTarget, changeOrigin: false },
+        '/.well-known': logtoProxy(logtoTarget),
+        // Logto experience 页面自身的 /api/interaction 等请求（开发态；不替代业务 API）
+        '/api': logtoProxy(apiTarget)
       },
       host: true
     },

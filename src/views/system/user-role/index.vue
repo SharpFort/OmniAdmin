@@ -95,10 +95,10 @@
       formatter: (row) => row.role_code || '-'
     },
     {
-      prop: 'assigned_at',
-      label: '分配时间',
-      width: 160,
-      formatter: (row) => row.assigned_at?.replace('T', ' ').slice(0, 19) || '-'
+      prop: 'organization_id',
+      label: '归属段',
+      minWidth: 140,
+      formatter: (row) => (row.organization_id ? row.organization_id : '全局')
     }
   ])
 

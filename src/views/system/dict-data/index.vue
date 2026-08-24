@@ -7,7 +7,7 @@
       <ArtTableHeader v-model:columns="columnChecks" :loading="loading" @refresh="getData">
         <template #left>
           <ElButton
-            v-perm="'public:dict:create'"
+            v-perm="'platform:dict:create'"
             type="primary"
             v-ripple
             @click="showDialog('add')"

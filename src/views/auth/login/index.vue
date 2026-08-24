@@ -34,6 +34,9 @@
         <!-- 加载失败兜底 -->
         <div v-else class="embed-center">
           <p class="text-sm opacity-60 mb-4">统一身份认证加载失败</p>
+          <p v-if="errorMessage" class="text-xs text-red-500 mb-2 max-w-60 break-all">{{
+            errorMessage
+          }}</p>
           <ElButton type="primary" class="w-full" @click="handleOpenInNewWindow">
             在新窗口打开登录页
           </ElButton>
@@ -57,6 +60,7 @@
   const loading = ref(true)
   const signInUrl = ref('')
   const iframeKey = ref(0)
+  const errorMessage = ref('')
 
   /** 嵌入登录消息协议（与回调页约定：postMessage 仅同源转发） */
   const EMBED_MSG_SOURCE = 'logto-embed'
@@ -71,7 +75,7 @@
     return fromQuery || fromStorage || '/'
   }
 
-  /** 接收 iframe 内回调页的消息（仅信任同源：回调页与登录页同为 5173） */
+  /** 接收 iframe 内回调页的消息（仅信任同源：回调页与登录页同为 3006） */
   const handleEmbedMessage = (event: MessageEvent) => {
     if (event.origin !== window.location.origin) return
     const data = event.data
@@ -100,6 +104,7 @@
       signInUrl.value = await createEmbedSignInUrl()
     } catch (error) {
       console.error('[Login] 生成 Logto 授权地址失败:', error)
+      errorMessage.value = error instanceof Error ? error.message : String(error)
     } finally {
       loading.value = false
     }
@@ -113,9 +118,14 @@
   const handleOpenInNewWindow = async () => {
     try {
       const url = signInUrl.value || (await createEmbedSignInUrl())
-      window.location.href = url
+      const win = window.open(url, '_blank', 'noopener')
+      if (!win) {
+        // 弹窗被拦截时退化为整页跳转
+        window.location.href = url
+      }
     } catch (error) {
       console.error('[Login] 获取 Logto 授权地址失败:', error)
+      errorMessage.value = error instanceof Error ? error.message : String(error)
       ElMessage.error('无法获取登录地址，请稍后重试')
     }
   }

@@ -4,10 +4,10 @@
     <ElCard class="art-table-card">
       <ArtTableHeader v-model:columns="columnChecks" :loading="loading" @refresh="getData">
         <template #left>
-          <ElButton v-perm="'public:position:create'" type="primary" v-ripple @click="handleAdd">
+          <ElButton v-perm="'platform:position:create'" type="primary" v-ripple @click="handleAdd">
             新增岗位
           </ElButton>
-          <ElButton v-perm="'public:position:assign'" v-ripple @click="showAssignDialog">
+          <ElButton v-perm="'platform:position:assign'" v-ripple @click="showAssignDialog">
             分配岗位
           </ElButton>
           <ElButton v-ripple @click="toggleExpand">

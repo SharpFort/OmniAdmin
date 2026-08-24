@@ -3,7 +3,7 @@
  *
  * 职责：
  * - postRpc<T>   → POST /rpc/{name}（自动 Bearer token）
- * - getView<T>   → GET /api_v1_public/{view}（select/order/limit/offset/filters 参数编码）
+ * - getView<T>   → GET /api_v1_platform/{view}（select/order/limit/offset/filters 参数编码）
  * - getViewPage<T> → 视图分页（limit/offset + Prefer: count=exact + Content-Range 取 total）
  * - 错误统一拦截：PostgREST 错误体 {code, message, details, hint}
  *   - code === '42501' → 全局提示「无权限」（页面级降级由调用方捕获 PostgrestRequestError.code 处理）
@@ -11,6 +11,8 @@
  *
  * 注意：本层与 src/utils/http/postgrest.ts（模板兼容层）并存；
  * 新代码一律使用本层，postgrest.ts 仅供未迁移页面过渡。
+ * URL 说明：本地直连 PostgREST 用根路径（db-schemas=api_v1_platform）；经 APISIX 网关
+ * 则把 VITE_API_URL 配为 .../api/v1/platform（proxy-rewrite 去前缀，RPC 仍走 /rpc/{name}）。
  */
 import axios, { AxiosRequestConfig } from 'axios'
 import { ElMessage } from 'element-plus'
@@ -152,7 +154,7 @@ export async function postRpc<T = unknown>(
 /**
  * GET /{view} 视图查询（返回数组）
  * ⚠️ 线上 PostgREST 为无前缀路径模式（宿主机 postgrest.conf 为 Pigsty 手工配置，
- * db-schemas 单 schema——根路径即 api_v1_public；带 /api_v1_public/ 前缀返回 404）
+ * db-schemas 单 schema——根路径即 api_v1_platform；带 /api_v1_platform/ 前缀返回 404）
  */
 export async function getView<T = Record<string, unknown>>(
   view: string,

@@ -4,7 +4,7 @@
     <ElCard class="art-table-card">
       <ArtTableHeader v-model:columns="columnChecks" :loading="loading" @refresh="getData">
         <template #left>
-          <ElButton v-perm="'public:dept:create'" type="primary" v-ripple @click="handleAdd">
+          <ElButton v-perm="'platform:dept:create'" type="primary" v-ripple @click="handleAdd">
             新增部门
           </ElButton>
           <ElButton v-ripple @click="toggleExpand">

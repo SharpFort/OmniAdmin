@@ -109,10 +109,10 @@
     { prop: 'email', label: '邮箱', minWidth: 160, formatter: (row) => row.email || '-' },
     { prop: 'phone', label: '电话', minWidth: 120, formatter: (row) => row.phone || '-' },
     {
-      prop: 'tenant_name',
-      label: '租户',
-      minWidth: 100,
-      formatter: (row) => row.tenant_name || '-'
+      prop: 'organization_name',
+      label: '租户/组织',
+      minWidth: 120,
+      formatter: (row) => row.organization_name || row.tenant_name || '-'
     },
     { prop: 'dept_name', label: '部门', minWidth: 100, formatter: (row) => row.dept_name || '-' },
     {

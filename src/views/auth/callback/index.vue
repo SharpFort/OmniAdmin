@@ -1,7 +1,7 @@
 <!--
   Logto OAuth 回调页（§2.1 定稿四步：① 检测 URL error → 提示+回登录页；② ensureUser JIT 建档
   （失败重试 1 次）；③ getCurrentUser 填 userStore；④ 跳转登录前页面）
-  嵌入模式（§2.1 B 方案）：回调发生在登录页 iframe 内（同源 5173）——token 交换、JIT 建档照常，
+  嵌入模式（§2.1 B 方案）：回调发生在登录页 iframe 内（同源 3006）——token 交换、JIT 建档照常，
   但最终跳转改为 postMessage 通知父窗口（父窗口整页跳转，避免 iframe 内空转）。
 -->
 <template>
@@ -20,7 +20,7 @@
   import { useUserStore } from '@/store/modules/user'
   import { useLogto, useHandleSignInCallback } from '@logto/vue'
   import { ensureUser, getCurrentUser } from '@/api/auth'
-  import { API_RESOURCE } from '@/config/logto'
+  import { API_RESOURCE, organizationId } from '@/config/logto'
 
   defineOptions({ name: 'AuthCallback' })
 
@@ -65,7 +65,7 @@
       // 非 JWT，PostgREST 报 PGRST301；授权时 SDK 已按 config.resources 存 JWT 于
       // resource key 下，此处显式取对应 key）
       statusText.value = '正在获取令牌...'
-      const token = await getAccessToken(API_RESOURCE)
+      const token = await getAccessToken(API_RESOURCE, organizationId || undefined)
       if (token) {
         userStore.setToken(token)
       } else {

@@ -8,7 +8,7 @@
   >
     <div class="mb-3 flex items-center gap-2">
       <ElButton
-        v-perm="'public:dict:create'"
+        v-perm="'platform:dict:create'"
         type="primary"
         size="small"
         @click="showDialog('add')"

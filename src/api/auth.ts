@@ -5,12 +5,12 @@
  * - 登录/注册/忘记密码/登出：Logto SDK（config/logto.ts）——前端不实现任何认证表单
  * - token 管理：Logto SDK getAccessToken()（内置 PKCE + 静默刷新）
  * - 本模块仅保留 PostgREST 侧数据接口：
- *   ensureUser（JIT 建档，035 起顺带 user_role 镜像全量覆盖，无需任何同步 RPC）
+ *   ensureUser（D25/D27：JIT 仅兜底 user_profile，组织归属取 claims organization_id；角色分配由 Logto 权威）
  *   getCurrentUser（userStore 数据源）、getAllPublicConfigs / getConfig（登录初始化）
  */
 import { postRpc } from './request'
 
-/** JIT 兜底建档（登录回调后调用；返回 sub；顺带 user_role 分配镜像覆盖） */
+/** JIT 兜底建档（登录回调后调用；返回 sub；仅兜底 user_profile，角色分配为 Logto 权威） */
 export function ensureUser() {
   return postRpc<string>('ensure_user', {})
 }

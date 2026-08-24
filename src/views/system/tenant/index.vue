@@ -92,7 +92,19 @@
 
   const { columns, columnChecks } = useTableColumns<Tenant>(() => [
     { type: 'index', width: 60, label: '序号' },
-    { prop: 'name', label: '租户名称', minWidth: 160 },
+    { prop: 'name', label: '租户/组织名称', minWidth: 160 },
+    {
+      prop: 'tenant_name',
+      label: 'Logto 租户',
+      minWidth: 110,
+      formatter: (row) => row.tenant_name || '-'
+    },
+    {
+      prop: 'organization_id',
+      label: '组织 ID',
+      minWidth: 130,
+      formatter: (row) => row.organization_id || '-'
+    },
     {
       prop: 'description',
       label: '描述',
@@ -131,7 +143,7 @@
   onMounted(getData)
 
   const showMembers = (row: Tenant) => {
-    currentOrgId.value = row.id
+    currentOrgId.value = row.organization_id
     nextTick(() => {
       membersDialogVisible.value = true
     })

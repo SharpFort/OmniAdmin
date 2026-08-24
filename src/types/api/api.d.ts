@@ -1,5 +1,5 @@
 /**
- * OmniAdmin API 类型定义（对齐 OmniPG 后端 feature/logto-authn / api_v1_public）
+ * OmniAdmin API 类型定义（对齐 OmniPG 后端 refactor/schema-platform-logto-public / api_v1_platform）
  *
  * 规范（docs/1.前端对齐后端方案-修订版.md §2.3，v1.4 定稿）：
  * - 命名风格 = snake_case 透传（零转换层）：字段与后端 PostgREST 返回一一对应
@@ -72,10 +72,15 @@ declare namespace Api {
       phone: string | null
       tenant_id: string | null
       tenant_name: string | null
+      organization_id: string | null
+      organization_name: string | null
       dept_id: string | null
       dept_name: string | null
       is_active: boolean
+      /** D27 claims 仍以 roles 并集为准（global_roles/org_roles 为拆分，后端未透出时可空） */
       roles: string[]
+      global_roles?: string[]
+      org_roles?: string[]
       created_at: string
       updated_at: string
     }
@@ -87,8 +92,10 @@ declare namespace Api {
       email: string | null
       phone: string | null
       tenant_id: string | null
+      organization_id: string | null
       dept_id: string | null
       tenant_name: string | null
+      organization_name: string | null
       dept_name: string | null
       is_active: boolean
       /** json 数组（user_tenants 聚合） */
@@ -98,19 +105,22 @@ declare namespace Api {
       deleted_at: string | null
     }
 
-    /** 用户-角色镜像行（v_user_roles；⚠️ LEFT JOIN，role_code/assigned_at 可为 null，前端需过滤） */
+    /** 用户-角色镜像行（v_user_roles；⚠️ LEFT JOIN，role_code/role_id 可为 null，前端需过滤） */
     interface UserRoleRow {
       user_id: string
       username: string
       email: string | null
       role_code: string | null
-      assigned_at: string | null
+      role_id: string | null
+      tenant_id: string | null
+      organization_id: string | null
     }
 
     /** 用户资料（rpc_get_user_profile → user_profile 行或 {}；业务列动态） */
     interface UserProfile {
       user_id: string
       tenant_id: string | null
+      organization_id: string | null
       dept_id: string | null
       [key: string]: unknown
     }
@@ -209,6 +219,8 @@ declare namespace Api {
     interface DeptNode {
       id: string
       dept_name: string
+      tenant_id: string | null
+      organization_id: string | null
       parent_id: string | null
       sort_order: number
       is_active: boolean
@@ -233,6 +245,7 @@ declare namespace Api {
       user_id: string
       position_id: string
       tenant_id: string | null
+      organization_id: string | null
       is_primary: boolean
       created_at: string
       created_by: string | null
@@ -242,6 +255,7 @@ declare namespace Api {
     interface DictType {
       id: string
       tenant_id: string | null
+      organization_id: string | null
       dict_name: string
       dict_label: string
       status: string
@@ -255,6 +269,7 @@ declare namespace Api {
     interface DictData {
       id: string
       tenant_id: string | null
+      organization_id: string | null
       dict_name: string
       item_label: string
       item_value: string
@@ -274,36 +289,52 @@ declare namespace Api {
       items: DictData[]
     }
 
-    /** 租户（rpc_list_tenants.items） */
+    /** 租户（业务组织；rpc_list_tenants.items，D27 输出 organization_id/tenant_id 双列） */
     interface Tenant {
-      id: string
+      /** 业务组织（Logto Organization）id——成员弹窗/搜索用 */
+      organization_id: string
+      /** Logto 部署租户 id（default/admin） */
+      tenant_id: string
       name: string
       description: string | null
+      tenant_name: string
       created_at: string
       member_count: number
+      /** @deprecated 后端已改为 organization_id（兼容历史代码） */
+      id?: string
     }
 
-    /** 租户成员（rpc_list_tenant_members.items） */
+    /** 租户/组织成员（rpc_list_tenant_members.items；D27 不再返回 joined_at） */
     interface TenantMember {
       user_id: string
       username: string
-      joined_at: string
+      email: string | null
+      phone: string | null
+      name: string | null
+      avatar: string | null
+      is_active: boolean
+      tenant_id: string | null
+      organization_id: string | null
+      /** @deprecated 后端已不再返回 */
+      joined_at?: string | null
     }
 
-    /** 用户-租户关系行（v_user_role_detail；role_name/tenant_name 均 = 租户名，created_at = joined_at） */
+    /** 用户-业务组织关系行（v_user_role_detail；D27：tenant_id=Logto 租户，organization_id=业务组织） */
     interface UserTenantRow {
       user_id: string
       username: string
       email: string | null
-      role_name: string
-      tenant_name: string
-      created_at: string
+      tenant_id: string | null
+      organization_id: string | null
+      tenant_name: string | null
+      organization_name: string | null
     }
 
     /** 登录日志（rpc_search_login_logs.items = login_log 视图列） */
     interface LoginLog {
       id: string
       tenant_id: string | null
+      organization_id: string | null
       user_id: string
       username: string
       login_type: string
@@ -316,7 +347,7 @@ declare namespace Api {
       created_at: string
     }
 
-    /** 审计日志（search_audit_log.items；⚠️ 以 RPC 返回为准，视图仅 8 列） */
+    /** 审计日志（search_audit_log.items；⚠️ 以 RPC 返回为准，含 tenant_name/organization_name） */
     interface AuditLog {
       id: string
       table_name: string
@@ -327,6 +358,8 @@ declare namespace Api {
       username: string | null
       tenant_id: string | null
       tenant_name: string | null
+      organization_id: string | null
+      organization_name: string | null
       created_at: string
     }
 
@@ -431,6 +464,8 @@ declare namespace Api {
      * 角色权限码 = role_menu → menu.api_code（button 行），v_role_api_detail 已随 iam_role_api 删除） */
     interface RoleMenuPerm {
       role_id: string
+      tenant_id: string | null
+      organization_id: string | null
       menu_id: string
       role_code: string
       role_name: string
@@ -496,13 +531,14 @@ declare namespace Api {
       role_name: string
       tenant_id: string | null
       tenant_name: string | null
+      organization_id: string | null
       description: string | null
       is_active: boolean
       api_count: number
       menu_count: number
       users_count: number
-      created_at: string
-      updated_at: string
+      created_at?: string
+      updated_at?: string
       deleted_at?: string | null
     }
 

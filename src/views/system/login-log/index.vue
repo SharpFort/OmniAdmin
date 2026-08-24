@@ -1,5 +1,5 @@
 <!-- 登录日志（rpc_search_login_logs：用户/结果下拉 + 登录方式/地区模糊 + 时间范围；037 扩展）
-  ⚠️ public:login-log:list 仅超管绑定 → tenant_admin 42501 全局提示 + 页面降级文案（B-3） -->
+  ⚠️ platform:login-log:list 仅超管绑定 → tenant_admin 42501 全局提示 + 页面降级文案（B-3） -->
 <template>
   <div class="login-log-page art-full-height">
     <ElCard class="art-table-card">
@@ -13,7 +13,7 @@
         show-icon
         :closable="false"
         class="mx-4 mb-3"
-        title="无权限查看登录日志（public:login-log:list 仅超管可用），请联系管理员"
+        title="无权限查看登录日志（platform:login-log:list 仅超管可用），请联系管理员"
       />
 
       <ArtTable

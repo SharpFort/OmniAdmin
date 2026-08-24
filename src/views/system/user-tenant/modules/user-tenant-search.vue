@@ -17,7 +17,7 @@
   interface Props {
     modelValue: {
       query: string
-      tenant_id: string
+      organization_id: string
     }
   }
   interface Emits {
@@ -36,13 +36,16 @@
 
   const rules = {}
 
-  // 租户选项（rpc_list_tenants；value=租户 id，过滤 v_user_role_detail.tenant_id）
+  // 租户选项（rpc_list_tenants；value=业务组织 id，过滤 v_user_role_detail.organization_id）
   const tenantOptions = ref<Array<{ label: string; value: string }>>([])
 
   onMounted(async () => {
     try {
-      const result = await listTenants({ limit: 1000 })
-      tenantOptions.value = result.items.map((item) => ({ label: item.name, value: item.id }))
+      const result = await listTenants({ limit: 100 })
+      tenantOptions.value = result.items.map((item) => ({
+        label: item.name,
+        value: item.organization_id
+      }))
     } catch (error) {
       console.warn('加载租户选项失败:', error)
       tenantOptions.value = []
@@ -59,7 +62,7 @@
     },
     {
       label: '租户',
-      key: 'tenant_id',
+      key: 'organization_id',
       type: 'select',
       props: {
         placeholder: '请选择租户',

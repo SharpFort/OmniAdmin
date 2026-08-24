@@ -156,7 +156,7 @@
         </ElCol>
         <ElCol :span="12">
           <ElFormItem label="权限码" prop="api_code">
-            <ElInput v-model.trim="form.api_code" placeholder="如 public:user:delete" clearable />
+            <ElInput v-model.trim="form.api_code" placeholder="如 platform:user:list" clearable />
           </ElFormItem>
           <div v-if="form.menu_type === 'button'" class="text-xs opacity-60">
             按钮权限码必填（单码制；一码多端点 = 多个按钮行同码）

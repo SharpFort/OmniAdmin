@@ -28,7 +28,9 @@
             </div>
             <div class="mt-2.5">
               <ArtSvgIcon icon="ri:building-line" class="text-g-700" />
-              <span class="ml-2 text-sm">{{ userInfo.tenant_name || '-' }}</span>
+              <span class="ml-2 text-sm">{{
+                userInfo.organization_name || userInfo.tenant_name || '-'
+              }}</span>
             </div>
             <div class="mt-2.5">
               <ArtSvgIcon icon="ri:community-line" class="text-g-700" />
@@ -102,6 +104,7 @@
   const EXCLUDE_COLUMNS = new Set([
     'user_id',
     'tenant_id',
+    'organization_id',
     'dept_id',
     'created_at',
     'updated_at',

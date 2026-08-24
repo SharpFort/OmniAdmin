@@ -34,7 +34,7 @@
   type UserTenantRow = Api.SystemManage.UserTenantRow
 
   // 搜索表单（单一数据源：搜索/重置/分页均基于此；ArtSearchBar 空值自动剔除）
-  const defaultSearchForm = () => ({ query: '', tenant_id: '' })
+  const defaultSearchForm = () => ({ query: '', organization_id: '' })
   const searchForm = ref(defaultSearchForm())
 
   const loading = ref(false)
@@ -46,7 +46,7 @@
     try {
       const result = await getUserRoleDetail({
         query: searchForm.value.query || undefined,
-        tenantId: searchForm.value.tenant_id || undefined,
+        organizationId: searchForm.value.organization_id || undefined,
         limit: pagination.size,
         offset: (pagination.current - 1) * pagination.size
       })
@@ -88,16 +88,16 @@
     { prop: 'username', label: '用户名', minWidth: 140 },
     { prop: 'email', label: '邮箱', minWidth: 180, formatter: (row) => row.email || '-' },
     {
-      prop: 'tenant_name',
-      label: '租户',
+      prop: 'organization_name',
+      label: '租户/组织',
       minWidth: 140,
-      formatter: (row) => row.tenant_name || '-'
+      formatter: (row) => row.organization_name || '-'
     },
     {
-      prop: 'created_at',
-      label: '加入时间',
-      width: 160,
-      formatter: (row) => row.created_at?.replace('T', ' ').slice(0, 19) || '-'
+      prop: 'tenant_name',
+      label: 'Logto 租户',
+      minWidth: 110,
+      formatter: (row) => row.tenant_name || '-'
     }
   ])
 

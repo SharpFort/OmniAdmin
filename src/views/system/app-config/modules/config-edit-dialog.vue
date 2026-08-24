@@ -1,4 +1,4 @@
-<!-- 配置值编辑弹窗（update_config RPC；public:config:write 仅超管） -->
+<!-- 配置值编辑弹窗（update_config RPC；platform:config:write 仅超管） -->
 <template>
   <ElDialog
     :model-value="visible"

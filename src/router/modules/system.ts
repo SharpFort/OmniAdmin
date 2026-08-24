@@ -5,7 +5,7 @@ import { AppRouteRecord } from '@/types/router'
  *
  * roles 对齐后端 PG 角色（init/02-schemas.sql）：role_super_admin / tenant_admin
  * 可见性矩阵（docs/1.前端对齐后端方案-修订版.md §2.5 tenant_admin 按钮矩阵）：
- * - login-log 仅超管（public:login-log:list 仅超管绑定）
+ * - login-log 仅超管（platform:login-log:list 仅超管绑定）
  * - menu/api/role：tenant_admin 只读（页面可见、按钮经 v-perm 全隐藏）
  * - 其余页面两角色可见；按钮级权限由 Phase 6 v-perm（后端权限码）控制
  */
@@ -177,7 +177,7 @@ export const systemRoutes: AppRouteRecord = {
       }
     },
     {
-      // config_admin 视图含 password.* 等敏感配置 → 页面仅超管可见（public:config:write 仅超管绑定）
+      // config_admin 视图含 password.* 等敏感配置 → 页面仅超管可见（platform:config:write 仅超管绑定）
       path: 'app-config',
       name: 'AppConfig',
       component: '/system/app-config',

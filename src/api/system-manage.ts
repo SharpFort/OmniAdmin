@@ -2,10 +2,10 @@
  * 系统管理 API（docs/1.前端对齐后端方案-修订版.md §2.2 / §1.2）
  *
  * 约定：
- * - 视图查询：getView / getViewPage（GET /api_v1_public/{view}）
+ * - 视图查询：getView / getViewPage（GET /api_v1_platform/{view}）
  * - RPC 调用：postRpc（POST /rpc/{name}，参数 p_xxx 命名与后端签名逐一核实）
  * - 写操作均走 SECURITY DEFINER RPC（权限点门槛），不经视图直接写
- * - Logto 镜像表（users/tenants/user_tenants/role/user_role）只读；写路径在 Logto Console
+ * - Logto 投影视图（users/tenants/organizations/user_tenants/role/tenant_role）只读；写路径在 Logto Console
  * - 分页：搜索类 RPC 自带 p_limit/p_offset（后端上限 100）；视图用 getViewPage（Content-Range）
  */
 import { postRpc, getViewPage } from './request'
@@ -18,7 +18,7 @@ import { toIsoLocal } from '@/utils/date'
 /** 用户分页搜索（search_users RPC，用户名/邮箱模糊 + 状态三态 + 部门） */
 export function searchUsers(params: {
   p_query?: string | null
-  p_status?: boolean | null
+  p_status?: 'active' | 'inactive' | string | null
   p_dept_id?: string | null
   p_limit?: number
   p_offset?: number
@@ -92,7 +92,7 @@ export function getUserProfile(userId: string) {
   return postRpc<Api.Auth.UserProfile>('rpc_get_user_profile', { p_user_id: userId })
 }
 
-/** 用户资料更新（rpc_update_user_profile；本人免权限点，管理他人需 public:profile:update） */
+/** 用户资料更新（rpc_update_user_profile；本人免权限点，管理他人需 platform:profile:update） */
 export function updateUserProfile(userId: string, updates: Record<string, unknown>) {
   return postRpc<Api.Common.ApiOk>('rpc_update_user_profile', {
     p_user_id: userId,
@@ -119,7 +119,7 @@ export function getRoleList(
   return getViewPage<Api.SystemManage.RoleListItem>('v_role_list', {
     limit: params.limit ?? 20,
     offset: params.offset ?? 0,
-    order: 'created_at.desc',
+    order: 'role_code.asc',
     filters
   })
 }
@@ -148,7 +148,7 @@ export function getRolePermissions(roleCode: string) {
   })
 }
 
-/** 角色→菜单绑定（rpc_set_role_menus；全量覆盖，public:role-menu:bind；数组参数；
+/** 角色→菜单绑定（rpc_set_role_menus；全量覆盖，platform:role-menu:bind；数组参数；
  * 055 单表化后为唯一授权保存通道——API 授权随按钮菜单勾选继承） */
 export function setRoleMenus(roleCode: string, menuIds: string[]) {
   return postRpc<Api.Common.ApiOk>('rpc_set_role_menus', {
@@ -189,7 +189,7 @@ export function getMenuList(
   })
 }
 
-/** 创建菜单（rpc_create_menu；public:menu:create；038 签名：+remark/route_name/is_link/is_iframe/redirect/is_cache；
+/** 创建菜单（rpc_create_menu；platform:menu:create；038 签名：+remark/route_name/is_link/is_iframe/redirect/is_cache；
  * 044 参数改名 p_perms→p_api_code/p_path→p_router；055 +p_api_url/p_api_method/p_is_affix——
  * 端点内嵌按钮行（SharpFort 单表化）；⚠️ button 行禁传 router/component（D8），api_url/api_method 成对（D6）；
  * ⚠️ p_menu_type 传 'link' 时后端自动置 is_link=true */
@@ -235,7 +235,7 @@ export function createMenu(params: {
   })
 }
 
-/** 更新菜单（rpc_update_menu；public:menu:update；038 签名：+remark/route_name/is_link/is_iframe/redirect/is_cache；
+/** 更新菜单（rpc_update_menu；platform:menu:update；038 签名：+remark/route_name/is_link/is_iframe/redirect/is_cache；
  * 044 参数改名 p_perms→p_api_code/p_path→p_router；055 +p_api_url/p_api_method/p_is_affix——
  * ⚠️ 改离 link 需显式传 p_is_link=false；改类型时导航/端点字段按最终类型归属（D8/D6） */
 export function updateMenu(params: {
@@ -284,7 +284,7 @@ export function updateMenu(params: {
   })
 }
 
-/** 删除菜单（rpc_delete_menu；public:menu:delete；有子菜单拒绝） */
+/** 删除菜单（rpc_delete_menu；platform:menu:delete；有子菜单拒绝） */
 export function deleteMenu(menuId: string) {
   return postRpc<Api.Common.ApiOk>('rpc_delete_menu', { p_id: menuId })
 }
@@ -294,7 +294,7 @@ export function deleteMenu(menuId: string) {
 // rpc_set_menu_apis / API CRUD RPC 已随 iam_api/iam_role_api 删除，不再封装）
 // ============================================================================
 
-/** 角色数据范围查询（rpc_get_role_data_scope；🔐 public:data-scope:bind） */
+/** 角色数据范围查询（rpc_get_role_data_scope；🔐 platform:data-scope:bind） */
 export function getRoleDataScope(roleCode: string) {
   return postRpc<Api.SystemManage.RoleDataScope>('rpc_get_role_data_scope', {
     p_role_code: roleCode
@@ -318,12 +318,12 @@ export function setRoleDataScope(
 // 部门
 // ============================================================================
 
-/** 部门树（get_dept_tree；扁平带 level/path；⚠️ 省略 p_tenant_id 参数——
- * 显式传 null 触发 PGRST203 重载歧义（api_v1_public text 版 + 015 残留 uuid 版）） */
-export function getDeptTree(tenantId?: string | null) {
+/** 部门树（get_dept_tree；扁平带 level/path；⚠️ D27 起参数为 p_organization_id（业务组织），
+ * 省略时由后端取当前组织 token 的 organization_id） */
+export function getDeptTree(organizationId?: string | null) {
   const body: Record<string, unknown> = {}
-  if (tenantId) {
-    body['p_tenant_id'] = tenantId
+  if (organizationId) {
+    body['p_organization_id'] = organizationId
   }
   return postRpc<Api.SystemManage.DeptNode[]>('get_dept_tree', body)
 }
@@ -337,7 +337,7 @@ export function getDeptList(params: { limit?: number; offset?: number } = {}) {
   })
 }
 
-/** 创建部门（rpc_create_department；public:dept:create） */
+/** 创建部门（rpc_create_department；platform:dept:create） */
 export function createDept(params: {
   p_dept_name: string
   p_parent_id?: string | null
@@ -350,7 +350,7 @@ export function createDept(params: {
   })
 }
 
-/** 更新部门（rpc_update_department；public:dept:update） */
+/** 更新部门（rpc_update_department；platform:dept:update） */
 export function updateDept(params: {
   p_id: string
   p_parent_id?: string | null
@@ -367,7 +367,7 @@ export function updateDept(params: {
   })
 }
 
-/** 删除部门（rpc_delete_department；public:dept:delete；有子部门/关联用户拒绝） */
+/** 删除部门（rpc_delete_department；platform:dept:delete；有子部门/关联用户拒绝） */
 export function deleteDept(deptId: string) {
   return postRpc<Api.Common.ApiOk>('rpc_delete_department', { p_id: deptId })
 }
@@ -376,12 +376,12 @@ export function deleteDept(deptId: string) {
 // 岗位
 // ============================================================================
 
-/** 岗位树（rpc_get_position_tree；扁平带 depth/path_name；public:position:list） */
+/** 岗位树（rpc_get_position_tree；扁平带 depth/path_name；platform:position:list） */
 export function getPositionTree() {
   return postRpc<Api.SystemManage.PositionNode[]>('rpc_get_position_tree', {})
 }
 
-/** 创建岗位（rpc_create_position；public:position:create） */
+/** 创建岗位（rpc_create_position；platform:position:create） */
 export function createPosition(params: {
   p_pos_name: string
   p_parent_id?: string | null
@@ -396,7 +396,7 @@ export function createPosition(params: {
   })
 }
 
-/** 更新岗位（rpc_update_position；public:position:update） */
+/** 更新岗位（rpc_update_position；platform:position:update） */
 export function updatePosition(params: {
   p_id: string
   p_parent_id?: string | null
@@ -415,12 +415,12 @@ export function updatePosition(params: {
   })
 }
 
-/** 删除岗位（rpc_delete_position；public:position:delete） */
+/** 删除岗位（rpc_delete_position；platform:position:delete） */
 export function deletePosition(positionId: string) {
   return postRpc<Api.Common.ApiOk>('rpc_delete_position', { p_id: positionId })
 }
 
-/** 用户岗位分配（rpc_assign_user_positions；全量覆盖，public:position:assign；数组参数） */
+/** 用户岗位分配（rpc_assign_user_positions；全量覆盖，platform:position:assign；数组参数） */
 export function assignUserPositions(params: {
   p_user_id: string
   p_position_ids: string[]
@@ -447,7 +447,7 @@ export function getUserPositions(params: { limit?: number; offset?: number } = {
 // 登录日志
 // ============================================================================
 
-/** 登录日志分页查询（rpc_search_login_logs；🔐 public:login-log:list 仅超管绑定；
+/** 登录日志分页查询（rpc_search_login_logs；🔐 platform:login-log:list 仅超管绑定；
  * 无关键词搜索——p_user_id 精确匹配 + 结果 + 登录方式/地区模糊 + 时间范围；上限 100）
  * 时间约定与审计日志一致：from/to 本地时间，date-only 结束日补 23:59:59（左闭右闭） */
 export function searchLoginLogs(
@@ -478,7 +478,7 @@ export function searchLoginLogs(
 // 配置
 // ============================================================================
 
-/** 更新系统配置（update_config；🔐 public:config:write） */
+/** 更新系统配置（update_config；🔐 platform:config:write） */
 export function updateConfig(configKey: string, configValue: string) {
   return postRpc<boolean>('update_config', {
     p_config_key: configKey,

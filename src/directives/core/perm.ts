@@ -6,7 +6,7 @@
  *
  * 用法：
  * ```vue
- * <el-button v-perm="'public:dept:create'">新增部门</el-button>
+ * <el-button v-perm="'platform:dept:create'">新增部门</el-button>
  * ```
  *
  * 无权限时从 DOM 移除元素（与 v-auth 行为一致）。

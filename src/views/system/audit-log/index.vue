@@ -146,10 +146,10 @@
       formatter: (row) => (row.new_data ? JSON.stringify(row.new_data).slice(0, 120) : '-')
     },
     {
-      prop: 'tenant_name',
-      label: '租户',
-      minWidth: 100,
-      formatter: (row) => row.tenant_name || '-'
+      prop: 'organization_name',
+      label: '租户/组织',
+      minWidth: 120,
+      formatter: (row) => row.organization_name || row.tenant_name || '-'
     },
     {
       prop: 'created_at',

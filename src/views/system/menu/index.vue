@@ -14,7 +14,7 @@
     <ElCard class="art-table-card" shadow="never">
       <ArtTableHeader v-model:columns="columnChecks" :loading="loading" @refresh="loadResourceTree">
         <template #left>
-          <ElButton v-perm="'public:menu:create'" type="primary" v-ripple @click="handleAddTop"
+          <ElButton v-perm="'platform:menu:create'" type="primary" v-ripple @click="handleAddTop"
             >新增菜单</ElButton
           >
           <ElButton v-ripple @click="toggleExpand">{{ isExpanded ? '收起' : '展开' }}</ElButton>

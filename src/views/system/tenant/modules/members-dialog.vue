@@ -11,10 +11,11 @@
       <el-table v-else :data="members" size="small" border>
         <el-table-column type="index" label="#" width="50" />
         <el-table-column prop="username" label="用户名" min-width="140" />
-        <el-table-column prop="joined_at" label="加入时间" min-width="160">
-          <template #default="{ row }">
-            {{ row.joined_at?.replace('T', ' ').slice(0, 19) || '-' }}
-          </template>
+        <el-table-column prop="name" label="姓名" min-width="120">
+          <template #default="{ row }">{{ row.name || '-' }}</template>
+        </el-table-column>
+        <el-table-column prop="email" label="邮箱" min-width="170">
+          <template #default="{ row }">{{ row.email || '-' }}</template>
         </el-table-column>
       </el-table>
     </div>
@@ -43,7 +44,7 @@
     if (!props.orgId) return
     loading.value = true
     try {
-      const result = await listTenantMembers({ orgId: props.orgId, limit: 100 })
+      const result = await listTenantMembers({ organizationId: props.orgId, limit: 100 })
       members.value = result.items
     } catch (error) {
       console.error('获取租户成员失败:', error)
