@@ -88,6 +88,9 @@ export default ({ mode }: { mode: string }) => {
         // Logto 同源代理：转发并改写 http://localhost:3001 → 前端 origin
         '/oidc': logtoProxy(logtoTarget),
         '/sign-in': logtoProxy(logtoTarget),
+        '/consent': logtoProxy(logtoTarget),
+        '/register': logtoProxy(logtoTarget),
+        '/forgot-password': logtoProxy(logtoTarget),
         '/unknown-session': logtoProxy(logtoTarget),
         // 静态资源不改写（避免二进制损坏），只透传（同样去掉 Origin-Agent-Cluster；
         // 需 selfHandleResponse 缓冲后重写头部，直接改 proxyRes.headers 在透传模式下不生效）
