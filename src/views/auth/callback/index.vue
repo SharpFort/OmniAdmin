@@ -18,9 +18,9 @@
   import { useRouter } from 'vue-router'
   import { ElMessage } from 'element-plus'
   import { useUserStore } from '@/store/modules/user'
-  import { useLogto, useHandleSignInCallback } from '@logto/vue'
+  import { useHandleSignInCallback } from '@logto/vue'
   import { ensureUser, getCurrentUser } from '@/api/auth'
-  import { API_RESOURCE, organizationId } from '@/config/logto'
+  import { API_RESOURCE, organizationId, getAccessToken } from '@/config/logto'
 
   defineOptions({ name: 'AuthCallback' })
 
@@ -42,9 +42,6 @@
     window.parent.postMessage({ source: EMBED_MSG_SOURCE, ...payload }, window.location.origin)
   }
 
-  /** Logto SDK composable：用于获取 token */
-  const { getAccessToken } = useLogto()
-
   /** 回到登录页（携带提示） */
   const backToLogin = (message?: string) => {
     if (message) {
@@ -64,6 +61,8 @@
       // 0. 获取 access token 并存入 store（⚠️ 必须带 resource：无 resource 返回 opaque
       // 非 JWT，PostgREST 报 PGRST301；授权时 SDK 已按 config.resources 存 JWT 于
       // resource key 下，此处显式取对应 key）
+      // D27：使用 config/logto.ts 的 getAccessToken（组织 token 失败时自动回退用户级 token），
+      // 避免“用户未加入默认组织 q8xan57gksx5”时插件代理直接返回 undefined 导致登录循环失败
       statusText.value = '正在获取令牌...'
       const token = await getAccessToken(API_RESOURCE, organizationId || undefined)
       if (token) {
@@ -94,6 +93,11 @@
       userStore.setUserInfo(userInfo)
       userStore.setLoginStatus(true)
       userStore.checkAndClearWorktabs()
+
+      // 2.5 强制持久化：$subscribe 默认 pre-flush，父窗口收到 postMessage 后立即整页跳转，
+      //     存在 localStorage 尚未落盘的竞态 → 重启后 userStore 为空 → 被守卫踢回登录页 →
+      //     已登录会话再次自动回跳，形成“右侧一直刷新”循环。这里显式写盘兜底。
+      ;(userStore as any).$persist?.()
 
       // 3. 跳转：嵌入模式 → 通知父窗口整页跳转（token 已在共享存储，父窗口重启后恢复登录态）；
       //    普通模式 → 直接 SPA 跳转

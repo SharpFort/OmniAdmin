@@ -50,6 +50,7 @@ import { loadingService } from '@/utils/ui'
 import { useCommon } from '@/hooks/core/useCommon'
 import { useWorktabStore } from '@/store/modules/worktab'
 import { getCurrentUser } from '@/api/auth'
+import { PostgrestRequestError } from '@/api/request'
 import { ApiStatus } from '@/utils/http/status'
 import { isHttpError } from '@/utils/http/error'
 import { RouteRegistry, MenuProcessor, IframeRouteManager, RoutePermissionValidator } from '../core'
@@ -363,11 +364,16 @@ async function handleDynamicRoutes(
     // 关闭 loading
     closeLoading()
 
-    // 401 错误：axios 拦截器已处理退出登录，取消当前导航
+    // 会话失效（HTTP 401 / JWT 过期 PGRST301 / RPC RAISE 'Unauthorized'）：
+    // postRpc 走原生 axios，没有模板 http 层的 401 拦截器代为登出，
+    // 这里显式清理登录态并回登录页，避免把用户锁死在 500 页。
+    // 典型场景：localStorage 残留登录态但 Logto sessionStorage 会话已丢失，
+    // get_current_user 以匿名身份被调用 → P0001 'Unauthorized' → 此前误判为服务器错误
     if (isUnauthorizedError(error)) {
-      // 重置状态，允许重新登录后再次初始化
       routeInitInProgress = false
-      next(false)
+      useUserStore().logOut()
+      resetRouteInitState()
+      next({ name: 'Login', query: { redirect: to.fullPath } })
       return
     }
 
@@ -435,5 +441,23 @@ function handleRootPathRedirect(to: RouteLocationNormalized, next: NavigationGua
  * 判断是否为未授权错误（401）
  */
 function isUnauthorizedError(error: unknown): boolean {
-  return isHttpError(error) && error.code === ApiStatus.unauthorized
+  // HttpError(401)：模板自带 http 层的错误形态
+  if (isHttpError(error) && error.code === ApiStatus.unauthorized) {
+    return true
+  }
+
+  // PostgrestRequestError：postRpc 抛出的 PostgREST 错误体（code 为字符串）——
+  // - PGRST301：JWT 缺失/无效/过期（HTTP 401）
+  // - 42501：RLS / 权限拒绝
+  // - P0001 且消息含 Unauthorized：get_current_user 等函数 RAISE EXCEPTION 'Unauthorized'
+  //   （PostgREST 把未捕获数据库异常映射为 HTTP 400，因此不能只看状态码）
+  if (error instanceof PostgrestRequestError) {
+    return (
+      error.code === 'PGRST301' ||
+      error.code === '42501' ||
+      (error.code === 'P0001' && /unauthorized/i.test(error.message))
+    )
+  }
+
+  return false
 }

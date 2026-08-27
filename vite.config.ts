@@ -48,6 +48,10 @@ export default ({ mode }: { mode: string }) => {
         proxyRes.on('end', () => {
           const raw = Buffer.concat(chunks)
           const headers: Record<string, any> = { ...proxyRes.headers }
+          // Logto 响应的 Origin-Agent-Cluster 与 Vite 自身页面不一致，
+          // 会导致浏览器报 “origin-keyed agent cluster” 警告；统一去掉
+          delete headers['origin-agent-cluster']
+          delete headers['Origin-Agent-Cluster']
           const enc = String(headers['content-encoding'] ?? '').toLowerCase()
           const patch = (input: Buffer) => {
             const text = input.toString('utf8').split('http://localhost:3001').join(origin)
@@ -85,13 +89,37 @@ export default ({ mode }: { mode: string }) => {
         '/oidc': logtoProxy(logtoTarget),
         '/sign-in': logtoProxy(logtoTarget),
         '/unknown-session': logtoProxy(logtoTarget),
-        // 静态资源不改写（避免二进制损坏），直接代理
-        '/assets': { target: logtoTarget, changeOrigin: false },
+        // 静态资源不改写（避免二进制损坏），只透传（同样去掉 Origin-Agent-Cluster；
+        // 需 selfHandleResponse 缓冲后重写头部，直接改 proxyRes.headers 在透传模式下不生效）
+        '/assets': {
+          target: logtoTarget,
+          changeOrigin: false,
+          selfHandleResponse: true,
+          configure: (proxy: any) => {
+            proxy.on('proxyRes', (proxyRes: any, req: any, res: any) => {
+              const chunks: Buffer[] = []
+              proxyRes.on('data', (chunk: Buffer) => chunks.push(chunk))
+              proxyRes.on('end', () => {
+                const body = Buffer.concat(chunks)
+                const headers: Record<string, any> = { ...proxyRes.headers }
+                delete headers['origin-agent-cluster']
+                delete headers['Origin-Agent-Cluster']
+                delete headers['content-length']
+                headers['content-length'] = String(body.length)
+                res.writeHead(proxyRes.statusCode ?? 200, headers)
+                res.end(body)
+              })
+            })
+          }
+        },
         '/.well-known': logtoProxy(logtoTarget),
         // Logto experience 页面自身的 /api/interaction 等请求（开发态；不替代业务 API）
         '/api': logtoProxy(apiTarget)
       },
-      host: true
+      // 仅监听 localhost：host:true 会让 Vite 绑定 0.0.0.0 并枚举全部网卡，
+      // 在 Windows 上会打印 169.254.*(链路本地)、WSL/Hyper-V 虚拟网卡等无用地址。
+      // 如需局域网/手机调试改回 true，且该 IP 必须已登记 Logto redirect/postLogout URI
+      host: 'localhost'
     },
     // 路径别名
     resolve: {

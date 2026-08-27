@@ -33,6 +33,7 @@ pnpm run build  # vue-tsc + vite build
 登录/注册/忘记密码/登出全部由 Logto 托管页处理（见 `docs/1.前端对齐后端方案-修订版.md` §2.1）：
 
 - 登录页右侧为 Logto 托管登录页（iframe 嵌入）——OmniPG `gateway/docker-compose.yml` 的 `LOGTO_EXTRA_FRAME_ANCESTOR` 固定放行 `http://localhost:3006 http://localhost:3007`，改端口后需 `docker compose up -d --force-recreate logto`
+- ⚠️ 前端动态取 `window.location.origin` + `/auth/callback` 作为 redirect_uri，因此**每个实际访问地址**（localhost / 127.0.0.1 / 局域网 IP / WSL 网关 IP × 3006/3007）都必须在 Logto Console 登记 redirect/post-logout URI，并在 `LOGTO_EXTRA_FRAME_ANCESTOR` 放行；否则登录会报 `oidc.invalid_redirect_uri` 或被 CSP 拒绝嵌入。当前开发机已登记包含 `172.17.112.1`、`192.168.0.128` 的 10 组 URI
 - 登录页仅两个按钮：统一身份认证登录 / 注册账号（`signIn(redirectUri, 'signUp')`）
 - 回调页：error 检测 → `ensure_user()`（JIT 建档，失败重试 1 次）→ `get_current_user()` 填 userStore → 跳转
 - token 由 Logto SDK 管理（PKCE + 静默刷新），请求层自动注入 Bearer

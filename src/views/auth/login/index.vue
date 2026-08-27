@@ -66,6 +66,9 @@
   const EMBED_MSG_SOURCE = 'logto-embed'
   /** 守卫传入的 redirect 参数跨 iframe 传递（sessionStorage） */
   const EMBED_REDIRECT_KEY = 'logto_embed_redirect'
+  /** iframe 登录失败自动重试上限（防止“用户不在组织/令牌获取失败”等持久错误导致无限刷新） */
+  const MAX_EMBED_RETRIES = 3
+  let embedRetryCount = 0
 
   /** 登录成功后的跳转目标：query.redirect（守卫传入）> sessionStorage > 首页 */
   const getRedirectTarget = () => {
@@ -88,8 +91,13 @@
     }
     if (data.type === 'sign-in-error') {
       ElMessage.error(typeof data.message === 'string' ? data.message : '登录未完成，请重试')
-      // 重置 iframe，回到 Logto 登录表单（signInSession 未消费，复用同一授权地址）
-      iframeKey.value += 1
+      if (embedRetryCount < MAX_EMBED_RETRIES) {
+        embedRetryCount += 1
+        // 重置 iframe，回到 Logto 登录表单（signInSession 未消费，复用同一授权地址）
+        iframeKey.value += 1
+      } else {
+        console.error('[Login] Logto 登录失败重试超限，请刷新页面或检查账号组织归属:', data.message)
+      }
     }
   }
 
