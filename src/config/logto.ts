@@ -174,10 +174,14 @@ export async function ensureFreshToken(): Promise<string> {
  *
  * 应在 Vue 组件中通过 useLogto().signIn(redirectUri) 调用；
  * 此函数仅作为非组件后备。
+ * @param interactionMode OIDC 交互模式：signIn=登录（默认）、signUp=注册（注册后自动登录并回调）
  */
-export async function signIn(redirect?: string): Promise<void> {
+export async function signIn(
+  redirect?: string,
+  interactionMode?: 'signIn' | 'signUp'
+): Promise<void> {
   const targetUri = redirect || redirectUri
-  await logtoClient.signIn(targetUri)
+  await logtoClient.signIn(targetUri, interactionMode)
 }
 
 /**
@@ -242,8 +246,15 @@ export const embedGenerateState = () => Promise.resolve(randomBase64Url(32))
 function createSameOriginRequester() {
   const baseRequester = createRequester(fetch)
   return async (input: any, init?: any): Promise<any> => {
-    const data = (await baseRequester(input, init)) as Record<string, any>
-    const url = String(input)
+    let requestUrl: any = input
+    let url = String(input)
+    // discovery 请求先改走同源 Vite 代理（/oidc → Logto），
+    // 避免浏览器对 http://localhost:3001 的跨域 fetch 因 CORS / CORP 被卡住（表现为一直转圈）。
+    if (url.includes('/oidc/.well-known/openid-configuration')) {
+      requestUrl = url.replace(/^https?:\/\/[^/]+/, window.location.origin)
+      url = String(requestUrl)
+    }
+    const data = (await baseRequester(requestUrl, init)) as Record<string, any>
     if (url.includes('/oidc/.well-known/openid-configuration')) {
       const origin = window.location.origin
       const rewrite = (value?: string) =>
@@ -287,7 +298,15 @@ export async function createEmbedSignInUrl(): Promise<string> {
       generateCodeChallenge: embedGenerateCodeChallenge
     }
     const client = new BaseLogtoClient(logtoConfig, adapter)
-    await client.signIn(redirectUri)
+    // 超时保护：discovery/网络异常时不要一直转圈，超时后走失败兜底
+    const signInPromise = client.signIn(redirectUri)
+    signInPromise.catch(() => {}) // 超时后晚到的 reject 不再冒泡
+    await Promise.race([
+      signInPromise,
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('生成 Logto 授权地址超时')), 8000)
+      )
+    ])
     return captured
   })()
 

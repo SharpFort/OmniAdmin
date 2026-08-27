@@ -58,6 +58,15 @@
     handled.value = true
 
     try {
+      // 嵌入模式（§2.1 B 方案）：useHandleSignInCallback 已完成 code → token 交换，
+      // 由父窗口在同一 SPA 内完成“建档/取用户/跳转”，避免父窗口整页跳转导致的
+      // “登录后右侧无限刷新”循环。这里只负责把结果通知父窗口。
+      if (isInIframe) {
+        postToParent({ type: 'sign-in-success' })
+        return
+      }
+
+      // 非嵌入（Logto 整页跳转回 /auth/callback）：完整登录后处理
       // 0. 获取 access token 并存入 store（⚠️ 必须带 resource：无 resource 返回 opaque
       // 非 JWT，PostgREST 报 PGRST301；授权时 SDK 已按 config.resources 存 JWT 于
       // resource key 下，此处显式取对应 key）
@@ -94,21 +103,15 @@
       userStore.setLoginStatus(true)
       userStore.checkAndClearWorktabs()
 
-      // 2.5 强制持久化：$subscribe 默认 pre-flush，父窗口收到 postMessage 后立即整页跳转，
-      //     存在 localStorage 尚未落盘的竞态 → 重启后 userStore 为空 → 被守卫踢回登录页 →
-      //     已登录会话再次自动回跳，形成“右侧一直刷新”循环。这里显式写盘兜底。
+      // 2.5 强制持久化（SPA 跳转前显式写盘）
       ;(userStore as any).$persist?.()
 
-      // 3. 跳转：嵌入模式 → 通知父窗口整页跳转（token 已在共享存储，父窗口重启后恢复登录态）；
-      //    普通模式 → 直接 SPA 跳转
-      if (isInIframe) {
-        postToParent({ type: 'sign-in-success' })
-        return
-      }
+      // 3. 跳转目标：query.redirect > sessionStorage > 首页
       const redirect =
         typeof router.currentRoute.value.query.redirect === 'string'
           ? router.currentRoute.value.query.redirect
-          : '/'
+          : sessionStorage.getItem('logto_embed_redirect') || '/'
+      sessionStorage.removeItem('logto_embed_redirect')
       router.replace(redirect)
     } catch (e) {
       console.error('[Callback] 登录后处理失败:', e)
