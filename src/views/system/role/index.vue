@@ -26,6 +26,14 @@
         @submit="refresh"
       />
 
+      <!-- 数据范围弹窗（独立；参考 sharpfort-net-vue） -->
+      <RoleDataScopeDialog
+        v-model:visible="scopeDialogVisible"
+        :role-code="currentRoleCode"
+        :role-name="currentRoleName"
+        @submit="refresh"
+      />
+
       <!-- 角色成员弹窗 -->
       <RoleMembersDialog v-model:visible="membersDialogVisible" :role-code="currentRoleCode" />
     </ElCard>
@@ -37,6 +45,7 @@
   import { getRoleList } from '@/api/system-manage'
   import RoleSearch from './modules/role-search.vue'
   import RolePermissionDialog from './modules/role-permission-dialog.vue'
+  import RoleDataScopeDialog from './modules/role-data-scope-dialog.vue'
   import RoleMembersDialog from './modules/role-members-dialog.vue'
   import { ElTag } from 'element-plus'
 
@@ -46,8 +55,10 @@
 
   // 弹窗相关
   const permDialogVisible = ref(false)
+  const scopeDialogVisible = ref(false)
   const membersDialogVisible = ref(false)
   const currentRoleCode = ref('')
+  const currentRoleName = ref('')
 
   // 搜索表单
   const searchForm = ref({
@@ -116,29 +127,44 @@
     {
       prop: 'operation',
       label: '操作',
-      width: 170,
+      width: 220,
       fixed: 'right',
       formatter: (row) =>
-        h('div', [
-          h(
-            'ElButton',
-            {
-              type: 'primary',
-              link: true,
-              onClick: () => showPermissionDialog(row)
-            },
-            () => '权限分配'
-          ),
-          h(
-            'ElButton',
-            {
-              type: 'primary',
-              link: true,
-              onClick: () => showMembersDialog(row)
-            },
-            () => '成员'
-          )
-        ])
+        h(
+          'div',
+          {
+            style: 'display: flex; align-items: center; gap: 12px;'
+          },
+          [
+            h(
+              'ElButton',
+              {
+                type: 'primary',
+                link: true,
+                onClick: () => showPermissionDialog(row)
+              },
+              () => '权限分配'
+            ),
+            h(
+              'ElButton',
+              {
+                type: 'primary',
+                link: true,
+                onClick: () => showScopeDialog(row)
+              },
+              () => '数据范围'
+            ),
+            h(
+              'ElButton',
+              {
+                type: 'primary',
+                link: true,
+                onClick: () => showMembersDialog(row)
+              },
+              () => '成员'
+            )
+          ]
+        )
     }
   ])
 
@@ -148,6 +174,14 @@
     currentRoleCode.value = row.role_code
     nextTick(() => {
       permDialogVisible.value = true
+    })
+  }
+
+  const showScopeDialog = (row: RoleListItem) => {
+    currentRoleCode.value = row.role_code
+    currentRoleName.value = row.role_name
+    nextTick(() => {
+      scopeDialogVisible.value = true
     })
   }
 
