@@ -124,16 +124,38 @@ export function getRoleList(
   })
 }
 
-/** 角色-用户镜像（v_role_users；⚠️ LEFT JOIN user_id 可为 null） */
-export function getRoleUsers(
+/** 组织角色列表（tenant_role 视图 = Logto organization_roles 镜像，只读；管理在 Logto Console） */
+export function getTenantRoleList(
   params: {
-    roleCode?: string
+    query?: string
     limit?: number
     offset?: number
   } = {}
 ) {
   const filters: Record<string, string> = {}
+  // 角色编码/名称在视图中同值（均取 Logto name），按名称模糊即可覆盖两者
+  if (params.query) filters['role_name'] = `ilike.*${params.query}*`
+  return getViewPage<Api.SystemManage.TenantRoleItem>('tenant_role', {
+    limit: params.limit ?? 20,
+    offset: params.offset ?? 0,
+    order: 'role_code.asc',
+    filters
+  })
+}
+
+/** 角色-用户镜像（v_role_users；⚠️ LEFT JOIN user_id 可为 null——默认过滤未分配行） */ export function getRoleUsers(
+  params: {
+    roleCode?: string
+    limit?: number
+    offset?: number
+    /** 是否包含未分配成员的行（user_id=null；默认 false，成员弹窗只需已分配行） */
+    includeUnassigned?: boolean
+  } = {}
+) {
+  const filters: Record<string, string> = {}
   if (params.roleCode) filters['role_code'] = `eq.${params.roleCode}`
+  // 默认排除 LEFT JOIN 空行，保证分页总数与行数一致
+  if (!params.includeUnassigned) filters['user_id'] = 'not.is.null'
   return getViewPage<Api.SystemManage.RoleUserItem>('v_role_users', {
     limit: params.limit ?? 50,
     offset: params.offset ?? 0,
@@ -433,14 +455,27 @@ export function assignUserPositions(params: {
   })
 }
 
-/** 用户-岗位关联列表（user_position 视图，分页；⚠️ 仅 ID 列，展示名需前端 join） */
-export function getUserPositions(params: { limit?: number; offset?: number } = {}) {
-  return getViewPage<Api.SystemManage.UserPositionRow>('user_position', {
-    limit: params.limit ?? 50,
-    offset: params.offset ?? 0,
-    order: 'created_at.desc',
-    filters: {}
-  })
+/** 用户-岗位搜索（search_user_positions RPC；后端 join 用户名/岗位路径 + 服务端分页，
+ *  🔐 platform:position:list；p_user_id 用于编辑回填取某用户全部分配） */
+export function searchUserPositions(
+  params: {
+    user_id?: string | null
+    query?: string | null
+    position_name?: string | null
+    limit?: number
+    offset?: number
+  } = {}
+) {
+  return postRpc<Api.Common.PageResult<Api.SystemManage.UserPositionItem>>(
+    'search_user_positions',
+    {
+      p_user_id: params.user_id ?? null,
+      p_query: params.query ?? null,
+      p_position_name: params.position_name ?? null,
+      p_limit: params.limit ?? 20,
+      p_offset: params.offset ?? 0
+    }
+  )
 }
 
 // ============================================================================

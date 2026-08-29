@@ -110,7 +110,11 @@
         form.pos_name = props.editData.pos_name
         form.pos_code = props.editData.pos_code || ''
         form.sort_no = props.editData.sort_no
-        form.status = String(props.editData.status)
+        // 后端 status 可能为 boolean/1/active 等形式，统一归一到 active/inactive 供 Switch 使用
+        const raw = props.editData.status as unknown
+        const active =
+          raw === true || raw === 'true' || raw === 'active' || raw === 1 || raw === '1'
+        form.status = active ? 'active' : 'inactive'
       } else {
         form.parent_id = (props.editData?.parent_id as string | null) ?? null
         form.pos_name = ''

@@ -309,6 +309,7 @@
       "tenant": "Tenants",
       "userTenant": "User Tenants",
       "userRole": "User Roles",
+      "tenantRole": "Tenant Roles",
       "loginLog": "Login Logs",
       "auditLog": "Audit Logs",
       "monitor": "System Monitor",

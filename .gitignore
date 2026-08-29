@@ -17,3 +17,7 @@ src/types/import/components.d.ts
 
 # Local database export files
 数据库文件/
+
+# Temporary debug artifacts
+.tmp-*
+public/__probe__.html

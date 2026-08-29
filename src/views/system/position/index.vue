@@ -100,7 +100,9 @@
       label: '状态',
       width: 80,
       formatter: (row) => {
-        const active = String(row.status) === 'active' || String(row.status) === 'true'
+        const raw = row.status as unknown
+        const active =
+          raw === true || raw === 'true' || raw === 'active' || raw === 1 || raw === '1'
         return h(ElTag, { type: active ? 'success' : 'warning' }, () => (active ? '启用' : '禁用'))
       }
     },

@@ -1,8 +1,8 @@
-<!-- 用户岗位分配弹窗（rpc_assign_user_positions：数组参数 + 主岗位单选） -->
+<!-- 用户岗位分配弹窗（rpc_assign_user_positions：数组参数 + 主岗位单选；支持编辑回填） -->
 <template>
   <ElDialog
     :model-value="visible"
-    title="分配岗位"
+    :title="editData ? '编辑岗位分配' : '分配岗位'"
     width="560px"
     @update:model-value="emit('update:visible', $event)"
   >
@@ -65,6 +65,14 @@
 
   const props = defineProps<{
     visible: boolean
+    /** 编辑模式回填数据（用户 + 已分配岗位 + 主岗位）；为空则为新增分配 */
+    editData?: {
+      userId: string
+      username: string
+      email: string | null
+      positionIds: string[]
+      primaryPositionId: string | null
+    } | null
   }>()
   const emit = defineEmits<{
     (e: 'update:visible', value: boolean): void
@@ -115,10 +123,24 @@
     () => props.visible,
     async (val) => {
       if (!val) return
-      userId.value = ''
-      positionIds.value = []
-      primaryPositionId.value = null
       userOptions.value = []
+      if (props.editData) {
+        // 编辑：回填用户与已分配岗位（userOptions 注入当前用户保证回显）
+        userId.value = props.editData.userId
+        userOptions.value = [
+          {
+            id: props.editData.userId,
+            username: props.editData.username,
+            email: props.editData.email
+          }
+        ]
+        positionIds.value = [...props.editData.positionIds]
+        primaryPositionId.value = props.editData.primaryPositionId
+      } else {
+        userId.value = ''
+        positionIds.value = []
+        primaryPositionId.value = null
+      }
       try {
         const items = await getPositionTree()
         // 扁平 → 树 + label 映射
@@ -163,7 +185,7 @@
         p_position_ids: positionIds.value,
         p_primary_position_id: primaryPositionId.value
       })
-      ElMessage.success('分配成功')
+      ElMessage.success(props.editData ? '更新成功' : '分配成功')
       emit('update:visible', false)
       emit('submit')
     } catch (error) {

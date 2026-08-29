@@ -1,5 +1,4 @@
-<!-- 用户岗位搜索栏（ArtSearchBar 声明式配置；search_user_positions RPC 服务端过滤：
-  username → p_query（匹配用户名/邮箱/姓名），position → p_position_name（岗位名/路径模糊）） -->
+<!-- 组织角色搜索栏（ArtSearchBar 声明式配置，与 user-role/tenant 页 *-search.vue 同构） -->
 <template>
   <ArtSearchBar
     ref="searchBarRef"
@@ -15,8 +14,7 @@
 <script setup lang="ts">
   interface Props {
     modelValue: {
-      username: string
-      position: string
+      query: string
     }
   }
   interface Emits {
@@ -37,17 +35,10 @@
 
   const formItems = computed(() => [
     {
-      label: '用户名',
-      key: 'username',
+      label: '角色名称',
+      key: 'query',
       type: 'input',
-      placeholder: '按用户名/邮箱过滤',
-      clearable: true
-    },
-    {
-      label: '岗位',
-      key: 'position',
-      type: 'input',
-      placeholder: '按岗位名称过滤',
+      placeholder: '按角色名称/编码模糊过滤',
       clearable: true
     }
   ])

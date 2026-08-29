@@ -1,5 +1,5 @@
-<!-- 用户岗位（user_position 视图：仅 ID 列，用户名/岗位名前端 join v_user_list + 岗位树；
-  搜索/分页均为客户端（视图无用户名列可服务端过滤）；分配复用岗位页 AssignDialog） -->
+<!-- 用户岗位（search_user_positions RPC：后端 join 用户名/岗位路径 + 服务端分页/过滤；
+  分配复用岗位页 AssignDialog，编辑回填/删除前经 p_user_id 拉取该用户全部分配） -->
 <template>
   <div class="user-position-page art-full-height">
     <UserPositionSearch v-model="searchForm" @search="handleSearch" @reset="resetSearch" />
@@ -11,7 +11,7 @@
             v-perm="'platform:position:assign'"
             type="primary"
             v-ripple
-            @click="assignVisible = true"
+            @click="openAssignAdd"
           >
             分配岗位
           </ElButton>
@@ -20,150 +20,170 @@
 
       <ArtTable
         :loading="loading"
-        :data="pagedData"
+        :data="data"
         :columns="columns"
         :pagination="pagination"
         @pagination:size-change="handleSizeChange"
         @pagination:current-change="handleCurrentChange"
       />
 
-      <!-- 复用岗位管理页分配弹窗（rpc_assign_user_positions） -->
-      <AssignDialog v-model:visible="assignVisible" @submit="getData" />
+      <!-- 分配/编辑复用岗位页 AssignDialog（rpc_assign_user_positions 全量覆盖） -->
+      <AssignDialog v-model:visible="assignVisible" :edit-data="assignEditData" @submit="getData" />
     </ElCard>
   </div>
 </template>
 
 <script setup lang="ts">
   import { useTableColumns } from '@/hooks/core/useTableColumns'
-  import { getUserPositions, getUserList, getPositionTree } from '@/api/system-manage'
+  import { searchUserPositions, assignUserPositions } from '@/api/system-manage'
   import UserPositionSearch from './modules/user-position-search.vue'
   import AssignDialog from '@/views/system/position/modules/assign-dialog.vue'
-  import { ElTag } from 'element-plus'
+  import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
+  import { ElTag, ElMessageBox, ElMessage } from 'element-plus'
 
   defineOptions({ name: 'UserPosition' })
 
-  type UserPositionRow = Api.SystemManage.UserPositionRow
+  type UserPositionItem = Api.SystemManage.UserPositionItem
 
-  /** 展示行（join 后） */
-  interface DisplayRow extends UserPositionRow {
-    username: string
-    email: string | null
-    pos_name: string
-    assigner_name: string
-  }
-
-  // 搜索表单（客户端过滤）
+  // 搜索表单（服务端过滤：username → p_query 匹配用户名/邮箱/姓名；position → p_position_name）
   const defaultSearchForm = () => ({ username: '', position: '' })
   const searchForm = ref(defaultSearchForm())
 
   const loading = ref(false)
-  const allRows = ref<UserPositionRow[]>([])
-  const userMap = ref<Record<string, { username: string; email: string | null }>>({})
-  const positionMap = ref<Record<string, string>>({})
-  const assignVisible = ref(false)
-
+  const data = ref<UserPositionItem[]>([])
   const pagination = reactive({ current: 1, size: 20, total: 0 })
+  const assignVisible = ref(false)
+  /** 编辑分配时的回填数据（null = 新增分配） */
+  const assignEditData = ref<{
+    userId: string
+    username: string
+    email: string | null
+    positionIds: string[]
+    primaryPositionId: string | null
+  } | null>(null)
 
-  /** 加载关联行 + 用户/岗位映射（一次性全量，join 后本地过滤） */
   const getData = async () => {
     loading.value = true
     try {
-      const [rows, users, positions] = await Promise.all([
-        getUserPositions({ limit: 1000, offset: 0 }),
-        getUserList({ limit: 500, offset: 0 }),
-        getPositionTree()
-      ])
-      allRows.value = rows.items || []
-
-      const map: Record<string, { username: string; email: string | null }> = {}
-      users.items.forEach((u) => {
-        map[u.id] = { username: u.username, email: u.email }
+      const result = await searchUserPositions({
+        query: searchForm.value.username || null,
+        position_name: searchForm.value.position || null,
+        limit: pagination.size,
+        offset: (pagination.current - 1) * pagination.size
       })
-      userMap.value = map
-
-      const posMap: Record<string, string> = {}
-      positions.forEach((p) => {
-        posMap[p.id] = p.path_name || p.pos_name
-      })
-      positionMap.value = posMap
+      data.value = result.items
+      pagination.total = result.total
     } catch (error) {
-      console.error('加载用户岗位失败:', error)
-      allRows.value = []
+      console.error('获取用户岗位失败:', error)
+      data.value = []
+      pagination.total = 0
     } finally {
       loading.value = false
     }
   }
 
-  /** 客户端过滤（用户名/邮箱/岗位名） */
-  const filtered = computed<DisplayRow[]>(() => {
-    const kw = searchForm.value.username.trim().toLowerCase()
-    const posKw = searchForm.value.position.trim().toLowerCase()
-    return allRows.value
-      .map((row) => {
-        const user = userMap.value[row.user_id]
-        return {
-          ...row,
-          username: user?.username || row.user_id,
-          email: user?.email ?? null,
-          pos_name: positionMap.value[row.position_id] || row.position_id,
-          assigner_name:
-            userMap.value[row.created_by || '']?.username || (row.created_by ? row.created_by : '-')
-        }
-      })
-      .filter((row) => {
-        if (
-          kw &&
-          !row.username.toLowerCase().includes(kw) &&
-          !(row.email || '').toLowerCase().includes(kw)
-        ) {
-          return false
-        }
-        if (posKw && !row.pos_name.toLowerCase().includes(posKw)) return false
-        return true
-      })
-  })
-
-  // 过滤结果变化 → 同步总数并夹紧当前页
-  watch(filtered, (rows) => {
-    pagination.total = rows.length
-    const maxPage = Math.max(1, Math.ceil(rows.length / pagination.size))
-    if (pagination.current > maxPage) pagination.current = maxPage
-  })
-
-  const pagedData = computed(() => {
-    const start = (pagination.current - 1) * pagination.size
-    return filtered.value.slice(start, start + pagination.size)
-  })
-
-  const fmtTime = (v: string | null) => (v ? String(v).replace('T', ' ').slice(0, 19) : '-')
-
-  // 搜索/重置：客户端直接触发过滤（无需回服务端；仍按规范跳回第 1 页）
+  // 搜索 → 合并参数并跳回第 1 页（分页跳转规范：搜索/重置/改每页条数均回第 1 页）
   const handleSearch = (params: any) => {
     Object.assign(searchForm.value, defaultSearchForm(), params)
     pagination.current = 1
+    getData()
   }
   const resetSearch = () => {
     searchForm.value = defaultSearchForm()
     pagination.current = 1
+    getData()
   }
   const handleSizeChange = (size: number) => {
     pagination.size = size
     pagination.current = 1
+    getData()
   }
   const handleCurrentChange = (page: number) => {
     pagination.current = page
+    getData()
   }
 
-  const { columns, columnChecks } = useTableColumns<DisplayRow>(() => [
+  /** 新增分配（清空编辑回填） */
+  const openAssignAdd = () => {
+    assignEditData.value = null
+    assignVisible.value = true
+  }
+
+  /** 取某用户的全部分配（rpc_assign_user_positions 为全量覆盖，编辑/删除前必须取全量） */
+  const fetchUserAssignments = async (userId: string) => {
+    const result = await searchUserPositions({ user_id: userId, limit: 100 })
+    return result.items
+  }
+
+  /** 编辑某用户的岗位分配（回填其全部岗位与主岗位） */
+  const handleAssignEdit = async (row: UserPositionItem) => {
+    try {
+      const userRows = await fetchUserAssignments(row.user_id)
+      assignEditData.value = {
+        userId: row.user_id,
+        username: row.username || row.user_id,
+        email: row.email,
+        positionIds: userRows.map((r) => r.position_id),
+        primaryPositionId: userRows.find((r) => r.is_primary)?.position_id ?? null
+      }
+      assignVisible.value = true
+    } catch (error) {
+      console.error('获取用户岗位分配失败:', error)
+    }
+  }
+
+  /** 移除单条分配（rpc_assign_user_positions 为全量覆盖，提交移除后剩余岗位） */
+  const handleAssignDelete = async (row: UserPositionItem) => {
+    try {
+      await ElMessageBox.confirm(
+        `确定移除用户「${row.username || row.user_id}」的岗位「${row.pos_name}」分配吗？`,
+        '提示',
+        {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          type: 'warning'
+        }
+      )
+      const userRows = await fetchUserAssignments(row.user_id)
+      const remaining = userRows
+        .filter((r) => r.position_id !== row.position_id)
+        .map((r) => r.position_id)
+      const primaryId = userRows.find((r) => r.is_primary)?.position_id ?? null
+      await assignUserPositions({
+        p_user_id: row.user_id,
+        p_position_ids: remaining,
+        p_primary_position_id: remaining.includes(primaryId as string) ? primaryId : null
+      })
+      ElMessage.success('移除成功')
+      getData()
+    } catch (error) {
+      console.warn('移除用户岗位失败:', error)
+    }
+  }
+
+  const fmtTime = (v: string | null) => (v ? String(v).replace('T', ' ').slice(0, 19) : '-')
+
+  const { columns, columnChecks } = useTableColumns<UserPositionItem>(() => [
     { type: 'index', width: 60, label: '序号' },
-    { prop: 'username', label: '用户名', minWidth: 140 },
+    {
+      prop: 'username',
+      label: '用户名',
+      minWidth: 140,
+      formatter: (row) => row.username || row.user_id
+    },
     {
       prop: 'email',
       label: '邮箱',
       minWidth: 160,
       formatter: (row) => row.email || '-'
     },
-    { prop: 'pos_name', label: '岗位', minWidth: 150 },
+    {
+      prop: 'pos_name',
+      label: '岗位',
+      minWidth: 180,
+      showOverflowTooltip: true,
+      formatter: (row) => row.path_name || row.pos_name
+    },
     {
       prop: 'is_primary',
       label: '主岗位',
@@ -179,10 +199,30 @@
       formatter: (row) => fmtTime(row.created_at)
     },
     {
-      prop: 'assigner_name',
+      prop: 'created_by_username',
       label: '分配人',
       minWidth: 120,
-      formatter: (row) => row.assigner_name
+      formatter: (row) => row.created_by_username || '-'
+    },
+    {
+      prop: 'operation',
+      label: '操作',
+      width: 130,
+      align: 'center',
+      fixed: 'right',
+      formatter: (row) =>
+        h('div', { style: 'text-align: center' }, [
+          h(ArtButtonTable, {
+            type: 'edit',
+            title: '编辑分配',
+            onClick: () => handleAssignEdit(row)
+          }),
+          h(ArtButtonTable, {
+            type: 'delete',
+            title: '移除分配',
+            onClick: () => handleAssignDelete(row)
+          })
+        ])
     }
   ])
 

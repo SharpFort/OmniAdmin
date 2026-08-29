@@ -251,6 +251,23 @@ declare namespace Api {
       created_by: string | null
     }
 
+    /** 用户-岗位搜索行（search_user_positions RPC；后端已 join 用户名/岗位路径，服务端分页） */
+    interface UserPositionItem {
+      user_id: string
+      position_id: string
+      tenant_id: string | null
+      organization_id: string | null
+      is_primary: boolean
+      created_at: string
+      created_by: string | null
+      username: string | null
+      email: string | null
+      user_name: string | null
+      pos_name: string
+      path_name: string
+      created_by_username: string | null
+    }
+
     /** 字典类型（dict_type 视图） */
     interface DictType {
       id: string
@@ -542,6 +559,23 @@ declare namespace Api {
       deleted_at?: string | null
     }
 
+    /** 组织角色项（tenant_role 视图 = Logto organization_roles 镜像，只读） */
+    interface TenantRoleItem {
+      id: string
+      tenant_id: string | null
+      role_code: string
+      role_name: string
+      /** D27 起恒为 null（全局组织角色） */
+      organization_id: string | null
+      description: string | null
+      type: string | null
+      is_active: boolean
+      deleted_at: string | null
+      created_by: string | null
+      updated_by: string | null
+      deleted_by: string | null
+    }
+
     /** @deprecated v_role_list 查询参数（Phase 5 迁移） */
     interface RoleSearchParams {
       query?: string
@@ -553,7 +587,14 @@ declare namespace Api {
     /** @deprecated v_role_users 行（仅 role_code/user_id） */
     interface RoleUserItem {
       role_code: string
-      user_id: string
+      role_id: string | null
+      user_id: string | null
+      /** v_role_users LEFT JOIN users；未分配行为 null */
+      username: string | null
+      tenant_id: string | null
+      role_type: string | null
+      assignment_tenant_id: string | null
+      assignment_organization_id: string | null
     }
 
     /** @deprecated 使用 Menu.MenuAdminNode（iam_menu 全列；name/level/children 为前端组树扩展） */

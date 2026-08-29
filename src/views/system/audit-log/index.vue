@@ -1,13 +1,20 @@
 <!-- 审计日志（search_audit_log 关键词/表名/操作/时间范围筛选 + v_audit_log_timeline 时间线）
   ⚠️ 9.4 已实测：operation 值域 = INSERT/UPDATE/DELETE（大写，audit_trigger_func）；
-  log_operate 写入的行 operation 为 NULL → 仅「全部」可见 -->
+  log_operate 写入的行 operation 为 NULL → 仅「全部」可见
+  搜索栏在卡片外（仅日志列表 tab 显示）：art-table-card 高度固定且 overflow hidden，
+  搜索栏放卡片内（tabs 里）会把分页条裁出视口 -->
 <template>
   <div class="audit-log-page art-full-height">
+    <AuditLogSearch
+      v-if="activeTab === 'list'"
+      v-model="searchForm"
+      @search="handleSearch"
+      @reset="resetSearch"
+    />
+
     <ElCard class="art-table-card">
       <el-tabs v-model="activeTab" @tab-change="handleTabChange">
         <el-tab-pane label="日志列表" name="list">
-          <AuditLogSearch v-model="searchForm" @search="handleSearch" @reset="resetSearch" />
-
           <ArtTableHeader v-model:columns="columnChecks" :loading="loading" @refresh="getData" />
 
           <ArtTable
@@ -15,6 +22,7 @@
             :data="data"
             :columns="columns"
             :pagination="pagination"
+            @row-click="handleRowClick"
             @pagination:size-change="handleSizeChange"
             @pagination:current-change="handleCurrentChange"
           />
@@ -24,6 +32,8 @@
           <AuditTimeline ref="timelineRef" />
         </el-tab-pane>
       </el-tabs>
+
+      <AuditLogDetailDialog v-model:visible="detailVisible" :log="currentLog" />
     </ElCard>
   </div>
 </template>
@@ -33,6 +43,8 @@
   import { searchAuditLog } from '@/api/audit'
   import AuditLogSearch from './modules/audit-log-search.vue'
   import AuditTimeline from './modules/audit-timeline.vue'
+  import AuditLogDetailDialog from './modules/audit-log-detail-dialog.vue'
+  import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
   import { ElTag } from 'element-plus'
 
   defineOptions({ name: 'AuditLog' })
@@ -41,6 +53,21 @@
 
   const activeTab = ref('list')
   const timelineRef = ref<InstanceType<typeof AuditTimeline>>()
+
+  // 详情弹窗（行点击 / 操作列查看按钮）
+  const detailVisible = ref(false)
+  const currentLog = ref<AuditLog | null>(null)
+
+  const showDetail = (row: AuditLog) => {
+    currentLog.value = row
+    detailVisible.value = true
+  }
+
+  // 行点击打开详情（忽略来自按钮/链接等交互元素的点击冒泡）
+  const handleRowClick = (row: AuditLog, _column: unknown, event: Event) => {
+    if ((event.target as HTMLElement)?.closest('button, a, input, .el-switch')) return
+    showDetail(row)
+  }
 
   // 切换到时间线 tab 时刷新（时间线组件可能因 keep-alive 缓存未重新挂载）
   const handleTabChange = (name: string | number) => {
@@ -156,8 +183,48 @@
       label: '时间',
       width: 160,
       formatter: (row) => row.created_at?.replace('T', ' ').slice(0, 19) || '-'
+    },
+    {
+      prop: 'operation_btn',
+      label: '操作',
+      width: 80,
+      align: 'center',
+      fixed: 'right',
+      formatter: (row) =>
+        h(ArtButtonTable, { type: 'view', title: '查看详情', onClick: () => showDetail(row) })
     }
   ])
 
   onMounted(getData)
 </script>
+
+<style scoped>
+  /* 卡片体改 flex 纵向：el-tabs 占满卡片剩余高度，表格区随内容收缩。
+     否则 el-tabs 页签头的高度不被 .art-table 的高度计算感知，
+     分页条会被 .el-card__body 的 overflow hidden 裁出视口 */
+  .audit-log-page :deep(.el-card__body) {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .audit-log-page :deep(.el-tabs) {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .audit-log-page :deep(.el-tabs__content) {
+    flex: 1;
+    min-height: 0;
+
+    /* .art-table 内置高度公式的间距常量比分页条实际外边距小几个像素，
+       溢出的几像素靠卡片 padding 吸收（与普通页面一致），不能在此裁剪 */
+    overflow: visible;
+  }
+
+  .audit-log-page :deep(.el-tab-pane) {
+    height: 100%;
+  }
+</style>

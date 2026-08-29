@@ -30,7 +30,7 @@
 <script setup lang="ts">
   import { useTableColumns } from '@/hooks/core/useTableColumns'
   import { listTenants } from '@/api/tenant'
-  import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
+  import { ElButton } from 'element-plus'
   import TenantSearch from './modules/tenant-search.vue'
   import MembersDialog from './modules/members-dialog.vue'
 
@@ -126,16 +126,20 @@
     {
       prop: 'operation',
       label: '操作',
-      width: 100,
-      align: 'right',
+      width: 130,
       fixed: 'right',
       formatter: (row) =>
-        h('div', { style: 'text-align: right' }, [
-          h(ArtButtonTable, {
-            type: 'add',
-            title: '查看成员',
-            onClick: () => showMembers(row)
-          })
+        h('div', { class: 'flex items-center' }, [
+          h(
+            ElButton,
+            {
+              type: 'primary',
+              size: 'small',
+              round: true,
+              onClick: () => showMembers(row)
+            },
+            () => '租户成员'
+          )
         ])
     }
   ])

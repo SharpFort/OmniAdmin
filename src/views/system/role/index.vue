@@ -47,7 +47,7 @@
   import RolePermissionDialog from './modules/role-permission-dialog.vue'
   import RoleDataScopeDialog from './modules/role-data-scope-dialog.vue'
   import RoleMembersDialog from './modules/role-members-dialog.vue'
-  import { ElTag } from 'element-plus'
+  import { ElButton, ElTag } from 'element-plus'
 
   defineOptions({ name: 'Role' })
 
@@ -127,44 +127,43 @@
     {
       prop: 'operation',
       label: '操作',
-      width: 220,
+      width: 280,
       fixed: 'right',
       formatter: (row) =>
-        h(
-          'div',
-          {
-            style: 'display: flex; align-items: center; gap: 12px;'
-          },
-          [
-            h(
-              'ElButton',
-              {
-                type: 'primary',
-                link: true,
-                onClick: () => showPermissionDialog(row)
-              },
-              () => '权限分配'
-            ),
-            h(
-              'ElButton',
-              {
-                type: 'primary',
-                link: true,
-                onClick: () => showScopeDialog(row)
-              },
-              () => '数据范围'
-            ),
-            h(
-              'ElButton',
-              {
-                type: 'primary',
-                link: true,
-                onClick: () => showMembersDialog(row)
-              },
-              () => '成员'
-            )
-          ]
-        )
+        h('div', { class: 'flex items-center gap-2' }, [
+          h(
+            ElButton,
+            {
+              type: 'primary',
+              size: 'small',
+              round: true,
+              onClick: () => showPermissionDialog(row)
+            },
+            () => '权限分配'
+          ),
+          h(
+            ElButton,
+            {
+              type: 'primary',
+              size: 'small',
+              round: true,
+              plain: true,
+              onClick: () => showScopeDialog(row)
+            },
+            () => '数据范围'
+          ),
+          h(
+            ElButton,
+            {
+              type: 'primary',
+              size: 'small',
+              round: true,
+              plain: true,
+              onClick: () => showMembersDialog(row)
+            },
+            () => '成员'
+          )
+        ])
     }
   ])
 

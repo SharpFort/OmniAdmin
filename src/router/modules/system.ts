@@ -136,6 +136,16 @@ export const systemRoutes: AppRouteRecord = {
       }
     },
     {
+      path: 'tenant-role',
+      name: 'TenantRole',
+      component: '/system/tenant-role',
+      meta: {
+        title: 'menus.system.tenantRole',
+        keepAlive: true,
+        roles: ['role_super_admin', 'tenant_admin']
+      }
+    },
+    {
       path: 'user-role',
       name: 'UserRole',
       component: '/system/user-role',

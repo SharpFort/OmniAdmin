@@ -20,7 +20,12 @@
       />
 
       <!-- 编辑资料弹窗 -->
-      <UserDialog v-model:visible="dialogVisible" :user-id="currentUserId" @submit="refresh" />
+      <UserDialog
+        v-model:visible="dialogVisible"
+        :user-id="currentUserId"
+        :username="currentUsername"
+        @submit="refresh"
+      />
 
       <!-- 查看角色弹窗 -->
       <UserRolesDialog v-model:visible="roleDialogVisible" :user-id="currentUserId" />
@@ -34,7 +39,7 @@
   import UserSearch from './modules/user-search.vue'
   import UserDialog from './modules/user-dialog.vue'
   import UserRolesDialog from './modules/user-roles-dialog.vue'
-  import { ElTag } from 'element-plus'
+  import { ElButton, ElTag } from 'element-plus'
 
   defineOptions({ name: 'User' })
 
@@ -44,6 +49,7 @@
   const dialogVisible = ref(false)
   const roleDialogVisible = ref(false)
   const currentUserId = ref('')
+  const currentUsername = ref('')
 
   // 搜索表单
   const searchForm = ref({
@@ -139,24 +145,27 @@
     {
       prop: 'operation',
       label: '操作',
-      width: 160,
+      width: 200,
       fixed: 'right',
       formatter: (row) =>
-        h('div', [
+        h('div', { class: 'flex items-center gap-2' }, [
           h(
-            'ElButton',
+            ElButton,
             {
               type: 'primary',
-              link: true,
+              size: 'small',
+              round: true,
               onClick: () => showRoles(row)
             },
             () => '查看角色'
           ),
           h(
-            'ElButton',
+            ElButton,
             {
               type: 'primary',
-              link: true,
+              size: 'small',
+              round: true,
+              plain: true,
               onClick: () => showDialog(row)
             },
             () => '编辑资料'
@@ -178,6 +187,7 @@
   // 编辑资料弹窗
   const showDialog = (row: UserListItem) => {
     currentUserId.value = row.id
+    currentUsername.value = row.username
     nextTick(() => {
       dialogVisible.value = true
     })

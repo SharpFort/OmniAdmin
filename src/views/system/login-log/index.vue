@@ -2,9 +2,10 @@
   ⚠️ platform:login-log:list 仅超管绑定 → tenant_admin 42501 全局提示 + 页面降级文案（B-3） -->
 <template>
   <div class="login-log-page art-full-height">
-    <ElCard class="art-table-card">
-      <LoginLogSearch v-model="searchForm" @search="handleSearch" @reset="resetSearch" />
+    <!-- 搜索栏在卡片外：art-table-card 高度固定且 overflow hidden，搜索栏放卡片内会把分页条裁出视口 -->
+    <LoginLogSearch v-model="searchForm" @search="handleSearch" @reset="resetSearch" />
 
+    <ElCard class="art-table-card">
       <ArtTableHeader v-model:columns="columnChecks" :loading="loading" @refresh="getData" />
 
       <el-alert
