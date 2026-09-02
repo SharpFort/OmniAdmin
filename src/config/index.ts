@@ -38,7 +38,8 @@ import { headerBarConfig } from './modules/headerBar'
 const appConfig: SystemConfig = {
   // 系统信息
   systemInfo: {
-    name: 'Art Design Pro' // 系统名称
+    // 系统名称：由 .env 的 VITE_SYSTEM_NAME 驱动，便于下游项目仅通过环境变量差异化
+    name: import.meta.env.VITE_SYSTEM_NAME || 'OmniAdmin'
   },
   // 系统主题
   systemThemeStyles: {

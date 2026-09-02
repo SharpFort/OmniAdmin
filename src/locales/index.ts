@@ -37,11 +37,47 @@ import zhMessages from './langs/zh.json'
 const storageKeyManager = new StorageKeyManager()
 
 /**
+ * 深度合并语言消息（overlay 中同名 key 覆盖基础包）
+ */
+function deepMerge(target: Record<string, unknown>, source: Record<string, unknown>): void {
+  for (const [key, value] of Object.entries(source)) {
+    const existing = target[key]
+    if (
+      typeof value === 'object' &&
+      value !== null &&
+      !Array.isArray(value) &&
+      typeof existing === 'object' &&
+      existing !== null &&
+      !Array.isArray(existing)
+    ) {
+      deepMerge(existing as Record<string, unknown>, value as Record<string, unknown>)
+    } else {
+      target[key] = value
+    }
+  }
+}
+
+/**
  * 语言消息对象
+ *
+ * 基础包为 langs/zh.json 与 langs/en.json；overlay/langs 下按语言分目录的
+ * JSON 文件（如 overlay/zh/citywalk/route.json）会被自动扫描并深度合并进来。
+ * 新增业务模块文案只需添加 overlay 文件，无需修改基础包。
  */
 const messages = {
   [LanguageEnum.EN]: enMessages,
   [LanguageEnum.ZH]: zhMessages
+}
+
+const overlayFiles = import.meta.glob<{ default: Record<string, unknown> }>(
+  './langs/overlay/**/*.json',
+  { eager: true }
+)
+
+for (const [file, mod] of Object.entries(overlayFiles)) {
+  const lang = file.match(/\/overlay\/([^/]+)\//)?.[1]
+  if (!lang || !(lang in messages) || !mod?.default) continue
+  deepMerge(messages[lang as LanguageEnum] as Record<string, unknown>, mod.default)
 }
 
 /**
