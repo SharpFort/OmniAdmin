@@ -316,6 +316,16 @@
       "appConfig": "App Config",
       "cronJobLog": "Cron Job Logs"
     },
+    "citywalk": {
+      "title": "Citywalk",
+      "places": "Places",
+      "matchQueue": "Match Review",
+      "mcaData": "MCA Place Names",
+      "tags": "Tags",
+      "categories": "Categories",
+      "tickets": "Feedback Tickets",
+      "poiUpdates": "POI Updates Review"
+    },
     "safeguard": {
       "title": "Safeguard",
       "server": "Server"

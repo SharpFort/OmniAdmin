@@ -316,6 +316,16 @@
       "appConfig": "应用配置",
       "cronJobLog": "定时任务日志"
     },
+    "citywalk": {
+      "title": "漫步内容",
+      "places": "景点管理",
+      "matchQueue": "匹配复审",
+      "mcaData": "地名库数据源",
+      "tags": "标签管理",
+      "categories": "分类浏览",
+      "tickets": "反馈工单",
+      "poiUpdates": "POI 纠错复审"
+    },
     "safeguard": {
       "title": "运维管理",
       "server": "服务器管理"
