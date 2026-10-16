@@ -139,6 +139,16 @@ export const citywalkRoutes: AppRouteRecord = {
         keepAlive: true,
         roles: ['role_super_admin', 'tenant_admin']
       }
+    },
+    {
+      path: 'publish/slugs',
+      name: 'CitywalkSlugs',
+      component: '/citywalk/publish/slugs',
+      meta: {
+        title: 'menus.citywalk.slugPublish',
+        keepAlive: true,
+        roles: ['role_super_admin', 'tenant_admin']
+      }
     }
   ]
 }

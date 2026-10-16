@@ -329,7 +329,8 @@
       "reports": "Reports",
       "reviews": "Reviews",
       "moderationQueue": "Moderation Queue",
-      "appeals": "Appeals"
+      "appeals": "Appeals",
+      "slugPublish": "Slug Publishing"
     },
     "safeguard": {
       "title": "Safeguard",

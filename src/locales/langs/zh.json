@@ -329,7 +329,8 @@
       "reports": "举报处理",
       "reviews": "评价管理",
       "moderationQueue": "内容审核",
-      "appeals": "申诉处理"
+      "appeals": "申诉处理",
+      "slugPublish": "Slug 发布"
     },
     "safeguard": {
       "title": "运维管理",

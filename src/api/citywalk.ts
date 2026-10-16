@@ -591,3 +591,221 @@ export function handleAppeal(appealId: string, isApproved: boolean) {
     { schema: MODERATION_SCHEMA }
   )
 }
+
+// -----------------------------------------------------------------
+// 景点生命周期与子表内容（P2 轮）
+// -----------------------------------------------------------------
+
+/** 景点状态机转换（PendingReview/Published/Archived 受控） */
+export function changePlaceStatus(placeId: string, newStatus: string, remark?: string) {
+  return postRpc<Api.Citywalk.PlaceLifecycleResult>(
+    'change_place_status',
+    { p_place_id: placeId, p_new_status: newStatus, p_remark: remark || null },
+    { schema: CITYWALK_SCHEMA }
+  )
+}
+
+/** 景点发布闭环（状态流转 + entity_id 生成 + slug 发布换绑 301，单事务） */
+export function publishPlace(placeId: string, slug: string, cityId?: string) {
+  return postRpc<Api.Citywalk.PlaceLifecycleResult>(
+    'publish_place',
+    { p_place_id: placeId, p_slug: slug, p_city_id: cityId || null },
+    { schema: CITYWALK_SCHEMA }
+  )
+}
+
+/** 景点描述列表（按 poi_id） */
+export function getPlaceDescriptions(poiId: string) {
+  return getView<Api.Citywalk.Description>('descriptions', {
+    schema: CITYWALK_SCHEMA,
+    filters: { poi_id: `eq.${poiId}` },
+    order: 'sort_order.asc',
+    limit: 50
+  })
+}
+
+/** 描述 upsert（同 poi+类型唯一更新；8 类内容槽位） */
+export function upsertPoiDescription(
+  poiId: string,
+  contentType: string,
+  title: string,
+  content: string,
+  sortOrder = 0
+) {
+  return postRpc<unknown>(
+    'upsert_poi_description',
+    {
+      p_poi_id: poiId,
+      p_content_type: contentType,
+      p_title: title,
+      p_content: content,
+      p_sort_order: sortOrder
+    },
+    { schema: CITYWALK_SCHEMA }
+  )
+}
+
+/** 描述软删 */
+export function deletePoiDescription(descriptionId: string) {
+  return postRpc<unknown>(
+    'delete_poi_description',
+    { p_description_id: descriptionId },
+    { schema: CITYWALK_SCHEMA }
+  )
+}
+
+/** 景点票务列表（按 poi_id） */
+export function getPlaceTickets(poiId: string) {
+  return getView<Api.Citywalk.Ticket>('ticket_info', {
+    schema: CITYWALK_SCHEMA,
+    filters: { poi_id: `eq.${poiId}` },
+    order: 'sort_order.asc',
+    limit: 50
+  })
+}
+
+/** 票务 upsert（ticketId 空=新票种；price 单位分） */
+export function upsertPoiTicket(
+  poiId: string,
+  data: {
+    ticketId?: string
+    ticketTypeName: string
+    price: number
+    currency?: string
+    description?: string
+    bookingUrl?: string
+    isActive?: boolean
+    sortOrder?: number
+  }
+) {
+  return postRpc<unknown>(
+    'upsert_poi_ticket',
+    {
+      p_poi_id: poiId,
+      p_ticket_id: data.ticketId || null,
+      p_ticket_type_name: data.ticketTypeName,
+      p_price: data.price,
+      p_currency: data.currency || 'CNY',
+      p_description: data.description || null,
+      p_booking_url: data.bookingUrl || null,
+      p_is_active: data.isActive ?? true,
+      p_sort_order: data.sortOrder ?? 0
+    },
+    { schema: CITYWALK_SCHEMA }
+  )
+}
+
+/** 票务软删 */
+export function deletePoiTicket(ticketId: string) {
+  return postRpc<unknown>(
+    'delete_poi_ticket',
+    { p_ticket_id: ticketId },
+    { schema: CITYWALK_SCHEMA }
+  )
+}
+
+/** 景点联系方式列表（按 poi_id） */
+export function getPlaceContacts(poiId: string) {
+  return getView<Api.Citywalk.Contact>('contact_info', {
+    schema: CITYWALK_SCHEMA,
+    filters: { poi_id: `eq.${poiId}` },
+    order: 'sort_order.asc',
+    limit: 50
+  })
+}
+
+/** 联系方式 upsert（contactId 空=新增） */
+export function upsertPoiContact(
+  poiId: string,
+  data: {
+    contactId?: string
+    contactType: string
+    contactValue: string
+    label?: string
+    sortOrder?: number
+  }
+) {
+  return postRpc<unknown>(
+    'upsert_poi_contact',
+    {
+      p_poi_id: poiId,
+      p_contact_id: data.contactId || null,
+      p_contact_type: data.contactType,
+      p_contact_value: data.contactValue,
+      p_label: data.label || null,
+      p_sort_order: data.sortOrder ?? 0
+    },
+    { schema: CITYWALK_SCHEMA }
+  )
+}
+
+/** 联系方式软删 */
+export function deletePoiContact(contactId: string) {
+  return postRpc<unknown>(
+    'delete_poi_contact',
+    { p_contact_id: contactId },
+    { schema: CITYWALK_SCHEMA }
+  )
+}
+
+/** 景点开放时间规则（只读，写通道后续轮次） */
+export function getPlaceOpeningHours(poiId: string) {
+  return getView<Api.Citywalk.OpeningHour>('opening_hours', {
+    schema: CITYWALK_SCHEMA,
+    filters: { poi_id: `eq.${poiId}` },
+    order: 'priority.desc',
+    limit: 50
+  })
+}
+
+// -----------------------------------------------------------------
+// Slug 发布管理（public 模块）
+// -----------------------------------------------------------------
+
+/** citywalk slug 域 schema */
+export const PUBLIC_SCHEMA = 'api_v1_public'
+
+/** 景点 Slug 列表（place_slugs 分页） */
+export function getPlaceSlugs(
+  params: { keyword?: string; onlyActive?: boolean; limit?: number; offset?: number } = {}
+) {
+  const filters: Record<string, string> = {}
+  if (params.keyword) filters['slug_value'] = `ilike.*${params.keyword}*`
+  if (params.onlyActive) filters['is_active'] = 'eq.true'
+  return getViewPage<Api.Citywalk.PlaceSlug>('place_slugs', {
+    schema: PUBLIC_SCHEMA,
+    limit: params.limit ?? 20,
+    offset: params.offset ?? 0,
+    order: 'published_at.desc',
+    filters
+  })
+}
+
+/** URL 重定向列表（url_redirects 分页） */
+export function getUrlRedirects(params: { limit?: number; offset?: number } = {}) {
+  return getViewPage<Api.Citywalk.UrlRedirect>('url_redirects', {
+    schema: PUBLIC_SCHEMA,
+    limit: params.limit ?? 20,
+    offset: params.offset ?? 0,
+    order: 'created_at.desc'
+  })
+}
+
+/** 独立发布/换绑 slug（place；旧 slug 自动 301） */
+export function publishPlaceSlug(placeId: string, slugValue: string, cityId?: string) {
+  return postRpc<unknown>(
+    'publish_slug',
+    {
+      p_entity_type: 'place',
+      p_entity_id: placeId,
+      p_slug_value: slugValue,
+      p_city_id: cityId || null
+    },
+    { schema: PUBLIC_SCHEMA }
+  )
+}
+
+/** Slug 下线（软删除） */
+export function deletePlaceSlug(slugId: string) {
+  return postRpc<unknown>('delete_slug', { p_slug_id: slugId }, { schema: PUBLIC_SCHEMA })
+}

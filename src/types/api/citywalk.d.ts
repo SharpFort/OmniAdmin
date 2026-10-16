@@ -340,5 +340,104 @@ declare namespace Api {
       penalty_reason: string | null
       penalty_status: string | null
     }
+
+    // ------------------------------------------------------------------
+    // 景点子表内容（P2 轮：生命周期与内容管理）
+    // ------------------------------------------------------------------
+    interface Description {
+      id: string
+      poi_id: string
+      content_type: string
+      title: string
+      content: string
+      sort_order: number | null
+      created_at: string
+      updated_at: string
+    }
+
+    interface Ticket {
+      id: string
+      poi_id: string
+      ticket_type_name: string
+      /** 单位：分 */
+      price: number
+      currency: string | null
+      description: string | null
+      booking_url: string | null
+      is_active: boolean | null
+      sort_order: number | null
+      created_at: string
+      updated_at: string
+    }
+
+    interface Contact {
+      id: string
+      poi_id: string
+      contact_type: string
+      contact_value: string
+      label: string | null
+      sort_order: number | null
+      created_at: string
+      updated_at: string
+    }
+
+    interface OpeningHour {
+      id: string
+      poi_id: string
+      rule_name: string | null
+      start_date: string | null
+      end_date: string | null
+      days_of_week: string | null
+      open_time: string | null
+      close_time: string | null
+      is_closed: boolean | null
+      remark: string | null
+      priority: number | null
+      created_at: string
+      updated_at: string
+    }
+
+    /** 状态机/发布动作返回 */
+    interface PlaceLifecycleResult {
+      id: string
+      name?: string
+      status: string
+      entity_id?: string
+      slug?: string
+      slug_published?: boolean
+      url?: string
+      remark?: string | null
+      changed_at?: string
+    }
+
+    // ------------------------------------------------------------------
+    // Slug 发布（public 模块）
+    // ------------------------------------------------------------------
+    interface PlaceSlug {
+      id: string
+      slug_value: string
+      entity_type: string
+      place_id: string
+      place_name: string | null
+      place_entity_id: string | null
+      city_id: string | null
+      language_code: string
+      is_active: boolean | null
+      is_primary: boolean | null
+      published_at: string | null
+      created_at: string
+    }
+
+    interface UrlRedirect {
+      id: string
+      old_slug: string
+      old_entity_type: string
+      new_entity_type: string | null
+      new_entity_id: string | null
+      redirect_type: number | null
+      hit_count: number | null
+      last_hit_at: string | null
+      created_at: string
+    }
   }
 }
