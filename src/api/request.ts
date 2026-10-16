@@ -54,9 +54,20 @@ export interface GetViewParams {
   offset?: number
   /** 过滤条件（PostgREST 语法值：{ username: 'ilike.*张*', is_active: 'eq.true' }） */
   filters?: Record<string, string>
+  /**
+   * 目标 schema（2026-10-16 跨域支持）：非 default schema 的视图需带
+   * Accept-Profile 头（如 citywalk 的 'api_v1_content_places'）；缺省走 default（api_v1_platform）
+   */
+  schema?: string
 }
 
-/** 构建查询字符串（encodeURIComponent 编码） */
+/** RPC 调用可选项（2026-10-16 跨域支持） */
+export interface RpcOptions {
+  /** 目标 schema：非 default schema 的 RPC 需带 Accept-Profile 头 */
+  schema?: string
+}
+
+/** 构建查询字符串（encodeURIComponent 编码；schema 不是查询参数，由调用方取出转 header） */
 function buildQuery(params: GetViewParams): string {
   const search = new URLSearchParams()
   if (params.select) {
@@ -72,6 +83,11 @@ function buildQuery(params: GetViewParams): string {
   }
   const qs = search.toString()
   return qs ? `?${qs}` : ''
+}
+
+/** schema → Accept-Profile 头（非 default schema 的视图/RPC 必需，PostgREST 多 schema 支持） */
+function profileHeaders(schema?: string): Record<string, string> {
+  return schema ? { 'Accept-Profile': schema } : {}
 }
 
 /** 获取带 Bearer token 的请求配置（token 过期经 Logto SDK 静默刷新） */
@@ -137,13 +153,15 @@ function handleError(error: unknown): never {
  * POST /rpc/{name} 调用后端存储过程
  * @param name RPC 函数名
  * @param body 参数对象（p_xxx 命名，与后端 pg_get_function_arguments 一致）
+ * @param options 可选项（schema：非 default schema 的 RPC 需指定，如 citywalk 域）
  */
 export async function postRpc<T = unknown>(
   name: string,
-  body: Record<string, unknown> = {}
+  body: Record<string, unknown> = {},
+  options: RpcOptions = {}
 ): Promise<T> {
   try {
-    const config = await getConfig()
+    const config = await getConfig({ headers: profileHeaders(options.schema) })
     const response = await axios.post<T>(`/rpc/${name}`, body, config)
     return response.data
   } catch (error) {
@@ -155,14 +173,16 @@ export async function postRpc<T = unknown>(
  * GET /{view} 视图查询（返回数组）
  * ⚠️ 线上 PostgREST 为无前缀路径模式（宿主机 postgrest.conf 为 Pigsty 手工配置，
  * db-schemas 单 schema——根路径即 api_v1_platform；带 /api_v1_platform/ 前缀返回 404）
+ * 多 schema：params.schema 指定时带 Accept-Profile 头（如 citywalk 域 api_v1_content_places）
  */
 export async function getView<T = Record<string, unknown>>(
   view: string,
   params: GetViewParams = {}
 ): Promise<T[]> {
   try {
-    const config = await getConfig()
-    const response = await axios.get<T[]>(`/${view}${buildQuery(params)}`, config)
+    const { schema, ...rest } = params
+    const config = await getConfig({ headers: profileHeaders(schema) })
+    const response = await axios.get<T[]>(`/${view}${buildQuery(rest)}`, config)
     return response.data
   } catch (error) {
     return handleError(error)
@@ -172,15 +192,16 @@ export async function getView<T = Record<string, unknown>>(
 /**
  * GET /{view} 视图分页查询
  * limit/offset 分页 + Prefer: count=exact + Content-Range 头取 total
+ * （limit: 0 + Prefer: count=exact 可用于"仅取计数"场景）
  */
 export async function getViewPage<T = Record<string, unknown>>(
   view: string,
   params: GetViewParams = {}
 ): Promise<Api.Common.PageResult<T>> {
   try {
-    const { limit = 20, offset = 0, ...rest } = params
+    const { schema, limit = 20, offset = 0, ...rest } = params
     const config = await getConfig({
-      headers: { Prefer: 'count=exact' }
+      headers: { Prefer: 'count=exact', ...profileHeaders(schema) }
     })
     const response = await axios.get<T[]>(
       `/${view}${buildQuery({ ...rest, limit, offset })}`,
