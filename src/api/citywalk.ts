@@ -16,6 +16,12 @@ export const CITYWALK_SCHEMA = 'api_v1_content_places'
 export const MASTERDATA_SCHEMA = 'api_v1_masterdata'
 /** citywalk 反馈工单 schema（content_feedback） */
 export const FEEDBACK_SCHEMA = 'api_v1_content_feedback'
+/** citywalk 评论 schema（content_comment） */
+export const COMMENT_SCHEMA = 'api_v1_content_comment'
+/** citywalk 评价 schema（content_reaction） */
+export const REACTION_SCHEMA = 'api_v1_content_reaction'
+/** citywalk 内容审核 schema（moderation） */
+export const MODERATION_SCHEMA = 'api_v1_moderation'
 
 // -----------------------------------------------------------------
 // 景点管理
@@ -361,5 +367,227 @@ export function reviewPoiUpdateRequest(requestId: string, newStatus: 'Approved' 
     'rpc_review_poi_update_request',
     { p_request_id: requestId, p_new_status: newStatus },
     { schema: FEEDBACK_SCHEMA }
+  )
+}
+
+// -----------------------------------------------------------------
+// 评论与举报（content_comment）
+// -----------------------------------------------------------------
+
+/** 评论列表（v_comments_admin 分页，admin 端全状态） */
+export function getCommentsAdminList(
+  params: {
+    keyword?: string
+    status?: string
+    onlyReported?: boolean
+    limit?: number
+    offset?: number
+  } = {}
+) {
+  const filters: Record<string, string> = {}
+  if (params.keyword) filters['content'] = `ilike.*${params.keyword}*`
+  if (params.status) filters['status'] = `eq.${params.status}`
+  if (params.onlyReported) filters['is_reported'] = 'eq.true'
+  return getViewPage<Api.Citywalk.Comment>('v_comments_admin', {
+    schema: COMMENT_SCHEMA,
+    limit: params.limit ?? 20,
+    offset: params.offset ?? 0,
+    order: 'created_at.desc',
+    filters
+  })
+}
+
+/** 评论审核动作（hide/restore/violation/delete/top/untop） */
+export function moderateComment(id: string, action: string) {
+  return postRpc<unknown>(
+    'rpc_moderate_comment',
+    { p_id: id, p_action: action },
+    { schema: COMMENT_SCHEMA }
+  )
+}
+
+/** 评论批量审核（同 moderateComment 动作集） */
+export function batchModerateComments(ids: string[], action: string) {
+  return postRpc<unknown>(
+    'rpc_batch_moderate_comments',
+    { p_ids: ids, p_action: action },
+    { schema: COMMENT_SCHEMA }
+  )
+}
+
+/** 举报列表（v_review_reports：评论/评价举报，admin 端全状态） */
+export function getReportList(
+  params: {
+    status?: string
+    targetType?: string
+    reasonType?: string
+    limit?: number
+    offset?: number
+  } = {}
+) {
+  const filters: Record<string, string> = {}
+  if (params.status) filters['status'] = `eq.${params.status}`
+  if (params.targetType) filters['target_type'] = `eq.${params.targetType}`
+  if (params.reasonType) filters['reason_type'] = `eq.${params.reasonType}`
+  return getViewPage<Api.Citywalk.ReviewReport>('v_review_reports', {
+    schema: COMMENT_SCHEMA,
+    limit: params.limit ?? 20,
+    offset: params.offset ?? 0,
+    order: 'created_at.desc',
+    filters
+  })
+}
+
+/** 举报处理（p_status: resolved 已处置 / rejected 驳回举报） */
+export function handleReport(id: string, status: 'resolved' | 'rejected', remark?: string) {
+  return postRpc<unknown>(
+    'rpc_handle_report',
+    { p_id: id, p_status: status, p_handler_remark: remark || null },
+    { schema: COMMENT_SCHEMA }
+  )
+}
+
+// -----------------------------------------------------------------
+// 评价（content_reaction）
+// -----------------------------------------------------------------
+
+/** 评价列表（v_reviews_admin 分页，admin 端全状态） */
+export function getReviewsAdminList(
+  params: {
+    keyword?: string
+    status?: string
+    minScore?: number
+    limit?: number
+    offset?: number
+  } = {}
+) {
+  const filters: Record<string, string> = {}
+  if (params.keyword) filters['content'] = `ilike.*${params.keyword}*`
+  if (params.status) filters['status'] = `eq.${params.status}`
+  if (params.minScore !== undefined) filters['overall_score'] = `gte.${params.minScore}`
+  return getViewPage<Api.Citywalk.Review>('v_reviews_admin', {
+    schema: REACTION_SCHEMA,
+    limit: params.limit ?? 20,
+    offset: params.offset ?? 0,
+    order: 'created_at.desc',
+    filters
+  })
+}
+
+/** 评价审核动作（publish 发布 / reject 驳回） */
+export function moderateReview(id: string, action: string) {
+  return postRpc<unknown>(
+    'rpc_moderate_review',
+    { p_id: id, p_action: action },
+    { schema: REACTION_SCHEMA }
+  )
+}
+
+/** 评价批量审核（同 moderateReview 动作集） */
+export function batchModerateReviews(ids: string[], action: string) {
+  return postRpc<unknown>(
+    'rpc_batch_moderate_reviews',
+    { p_ids: ids, p_action: action },
+    { schema: REACTION_SCHEMA }
+  )
+}
+
+// -----------------------------------------------------------------
+// 内容审核（moderation）
+// -----------------------------------------------------------------
+
+/** 待审队列（v_pending_audit_queue 分页） */
+export function getModerationQueue(
+  params: {
+    targetType?: string
+    riskLevel?: string
+    onlyOverdue?: boolean
+    limit?: number
+    offset?: number
+  } = {}
+) {
+  const filters: Record<string, string> = {}
+  if (params.targetType) filters['target_type'] = `eq.${params.targetType}`
+  if (params.riskLevel) filters['risk_level'] = `eq.${params.riskLevel}`
+  if (params.onlyOverdue) filters['is_overdue'] = 'eq.true'
+  return getViewPage<Api.Citywalk.ModerationQueueItem>('v_pending_audit_queue', {
+    schema: MODERATION_SCHEMA,
+    limit: params.limit ?? 20,
+    offset: params.offset ?? 0,
+    filters
+  })
+}
+
+/** 风险看板（v_admin_risk_dashboard 按日/类型/风险级聚合，近 N 天） */
+export function getRiskDashboard(limit = 200) {
+  return getView<Api.Citywalk.RiskDashboardRow>('v_admin_risk_dashboard', {
+    schema: MODERATION_SCHEMA,
+    order: 'review_date.desc',
+    limit
+  })
+}
+
+/** 审核通过 */
+export function approveContent(contentId: string) {
+  return postRpc<unknown>(
+    'rpc_admin_approve_content',
+    { p_content_id: contentId },
+    { schema: MODERATION_SCHEMA }
+  )
+}
+
+/** 审核驳回（可带原因码与备注） */
+export function rejectContent(contentId: string, reasonCode?: string, remark?: string) {
+  return postRpc<unknown>(
+    'rpc_admin_reject_content',
+    {
+      p_content_id: contentId,
+      p_rejection_reason_code: reasonCode || null,
+      p_custom_remark: remark || null
+    },
+    { schema: MODERATION_SCHEMA }
+  )
+}
+
+/** 审核任务指派（处理人 + 优先级 + 截止时间） */
+export function assignModerationTask(
+  contentId: string,
+  assigneeId: string,
+  priority = 'Medium',
+  dueTime?: string
+) {
+  return postRpc<unknown>(
+    'rpc_admin_assign_task',
+    {
+      p_content_id: contentId,
+      p_assignee_id: assigneeId,
+      p_priority: priority,
+      p_due_time: dueTime || null
+    },
+    { schema: MODERATION_SCHEMA }
+  )
+}
+
+/** 申诉列表（v_appeals_admin 分页） */
+export function getAppealsAdminList(
+  params: { status?: string; limit?: number; offset?: number } = {}
+) {
+  const filters: Record<string, string> = {}
+  if (params.status) filters['status'] = `eq.${params.status}`
+  return getViewPage<Api.Citywalk.Appeal>('v_appeals_admin', {
+    schema: MODERATION_SCHEMA,
+    limit: params.limit ?? 20,
+    offset: params.offset ?? 0,
+    order: 'created_at.desc',
+    filters
+  })
+}
+
+/** 申诉处理（通过 = 支持申诉撤销原判；驳回 = 维持原判） */
+export function handleAppeal(appealId: string, isApproved: boolean) {
+  return postRpc<unknown>(
+    'rpc_admin_handle_appeal',
+    { p_appeal_id: appealId, p_is_approved: isApproved },
+    { schema: MODERATION_SCHEMA }
   )
 }

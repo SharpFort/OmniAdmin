@@ -324,7 +324,12 @@
       "tags": "Tags",
       "categories": "Categories",
       "tickets": "Feedback Tickets",
-      "poiUpdates": "POI Updates Review"
+      "poiUpdates": "POI Updates Review",
+      "comments": "Comments",
+      "reports": "Reports",
+      "reviews": "Reviews",
+      "moderationQueue": "Moderation Queue",
+      "appeals": "Appeals"
     },
     "safeguard": {
       "title": "Safeguard",

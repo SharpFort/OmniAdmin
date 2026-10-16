@@ -227,5 +227,118 @@ declare namespace Api {
       ticket_status: string | null
       ticket_priority: string | null
     }
+
+    // ------------------------------------------------------------------
+    // 评论与举报（content_comment）
+    // ------------------------------------------------------------------
+    interface Comment {
+      id: string
+      entity_type: string | null
+      entity_id: string | null
+      user_id: string | null
+      content: string | null
+      parent_id: string | null
+      root_id: string | null
+      depth: number | null
+      like_count: number | null
+      reply_count: number | null
+      status: string | null
+      is_top: boolean | null
+      is_reported: boolean | null
+      created_at: string
+      updated_at: string
+    }
+
+    interface ReviewReport {
+      id: string
+      target_type: string | null
+      target_id: string | null
+      reporter_id: string | null
+      reason_type: string | null
+      description: string | null
+      status: string | null
+      handler_id: string | null
+      handled_at: string | null
+      handler_remark: string | null
+      created_at: string
+    }
+
+    // ------------------------------------------------------------------
+    // 评价（content_reaction）
+    // ------------------------------------------------------------------
+    interface Review {
+      id: string
+      entity_type: string | null
+      entity_id: string | null
+      user_id: string | null
+      overall_score: number | null
+      title: string | null
+      content: string | null
+      is_recommended: boolean | null
+      helpful_count: number | null
+      unhelpful_count: number | null
+      reply_count: number | null
+      like_count: number | null
+      dislike_count: number | null
+      share_count: number | null
+      status: string | null
+      is_anonymous: boolean | null
+      is_top: boolean | null
+      trust_score: number | null
+      created_at: string
+      updated_at: string
+    }
+
+    // ------------------------------------------------------------------
+    // 内容审核（moderation）
+    // ------------------------------------------------------------------
+    interface ModerationQueueItem {
+      content_id: string
+      target_id: string | null
+      target_type: string | null
+      submitter_user_id: string | null
+      initial_audit_type: string | null
+      risk_level: string | null
+      submitted_at: string
+      assignment_id: string | null
+      assignee_id: string | null
+      priority: string | null
+      due_time: string | null
+      assignment_status: string | null
+      waiting_hours: number | null
+      is_overdue: boolean | null
+    }
+
+    interface RiskDashboardRow {
+      review_date: string
+      target_type: string | null
+      risk_level: string | null
+      total_count: number
+      approved_count: number
+      rejected_count: number
+      pending_count: number
+      avg_review_hours: number | null
+      ai_auto_approve_rate: number | null
+      avg_risk_score: number | null
+    }
+
+    interface Appeal {
+      id: string
+      related_audit_id: string | null
+      related_penalty_id: string | null
+      submitter_user_id: string | null
+      appeal_reason: string
+      status: string
+      handler_id: string | null
+      created_at: string
+      updated_at: string
+      target_id: string | null
+      target_type: string | null
+      audit_status: string | null
+      audit_risk_level: string | null
+      penalty_type: string | null
+      penalty_reason: string | null
+      penalty_status: string | null
+    }
   }
 }

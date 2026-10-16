@@ -89,6 +89,56 @@ export const citywalkRoutes: AppRouteRecord = {
         keepAlive: true,
         roles: ['role_super_admin', 'tenant_admin']
       }
+    },
+    {
+      path: 'comment/comments',
+      name: 'CitywalkComments',
+      component: '/citywalk/comment/comments',
+      meta: {
+        title: 'menus.citywalk.comments',
+        keepAlive: true,
+        roles: ['role_super_admin', 'tenant_admin']
+      }
+    },
+    {
+      path: 'comment/reports',
+      name: 'CitywalkReports',
+      component: '/citywalk/comment/reports',
+      meta: {
+        title: 'menus.citywalk.reports',
+        keepAlive: true,
+        roles: ['role_super_admin', 'tenant_admin']
+      }
+    },
+    {
+      path: 'reaction/reviews',
+      name: 'CitywalkReviews',
+      component: '/citywalk/reaction/reviews',
+      meta: {
+        title: 'menus.citywalk.reviews',
+        keepAlive: true,
+        roles: ['role_super_admin', 'tenant_admin']
+      }
+    },
+    {
+      path: 'moderation/queue',
+      name: 'CitywalkModerationQueue',
+      component: '/citywalk/moderation/queue',
+      meta: {
+        title: 'menus.citywalk.moderationQueue',
+        keepAlive: true,
+        roles: ['role_super_admin', 'tenant_admin']
+      }
+    },
+    {
+      path: 'moderation/appeals',
+      name: 'CitywalkAppeals',
+      component: '/citywalk/moderation/appeals',
+      meta: {
+        title: 'menus.citywalk.appeals',
+        keepAlive: true,
+        roles: ['role_super_admin', 'tenant_admin']
+      }
     }
   ]
 }
