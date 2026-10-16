@@ -1,6 +1,5 @@
-<!-- 景点管理（v_pois_admin：admin 端全状态列表，含 PendingReview/Archived）
-  定位：数据准备阶段的 places 基础集管理——匹配管道 ingest_new 产出的 PendingReview
-  景点在此浏览核查；状态流转 RPC 待后端补（change_post_status 是帖子状态，不适用） -->
+<!-- 景点管理（v_pois_admin：全状态列表 + 生命周期操作 + 子表内容抽屉）
+  P2 轮升级：发布（状态+entity_id+slug 闭环）、归档、重审；详情抽屉含描述/票务/联系/开放时间 -->
 <template>
   <div class="citywalk-places-page art-full-height">
     <PlacesSearch v-model="searchForm" @search="handleSearch" @reset="resetSearch" />
@@ -28,23 +27,61 @@
       />
     </ElCard>
 
-    <PlaceDetailDrawer v-model="detailVisible" :place="detailRow" />
+    <!-- 发布对话框（状态流转 + entity_id + slug 一步到位） -->
+    <ElDialog v-model="publishVisible" title="发布景点" width="480px">
+      <el-alert
+        v-if="publishTarget"
+        type="info"
+        :closable="false"
+        class="mb-3"
+        :title="`${publishTarget.name}（当前状态：${statusLabel(publishTarget.status)}）`"
+      />
+      <el-form label-width="90px">
+        <el-form-item label="Slug">
+          <el-input
+            v-model="publishSlug"
+            placeholder="URL 标识，如 yi-he-yuan（唯一，换绑自动 301）"
+          >
+            <template #prepend>/place/</template>
+          </el-input>
+        </el-form-item>
+        <el-form-item label="预览">
+          <span class="text-secondary">
+            {{ publishTarget?.entity_id ? `/place/${publishTarget.entity_id}-` : '/place/{auto}-'
+            }}{{ publishSlug || '…' }}
+          </span>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <ElButton @click="publishVisible = false">取消</ElButton>
+        <ElButton
+          type="primary"
+          :disabled="!publishSlug"
+          :loading="publishing"
+          @click="handlePublish"
+        >
+          确认发布
+        </ElButton>
+      </template>
+    </ElDialog>
+
+    <!-- 内容抽屉（基本信息 + 描述/票务/联系/开放时间） -->
+    <PlaceContentDrawer v-model="contentVisible" :place="contentTarget" @refresh="getData" />
   </div>
 </template>
 
 <script setup lang="ts">
   import { useTableColumns } from '@/hooks/core/useTableColumns'
-  import { getPlacesAdminList } from '@/api/citywalk'
+  import { getPlacesAdminList, changePlaceStatus, publishPlace } from '@/api/citywalk'
   import { PostgrestRequestError } from '@/api/request'
   import PlacesSearch from './modules/places-search.vue'
-  import PlaceDetailDrawer from './modules/place-detail-drawer.vue'
-  import { ElTag, ElButton } from 'element-plus'
+  import PlaceContentDrawer from './modules/place-content-drawer.vue'
+  import { ElTag, ElButton, ElMessage, ElMessageBox } from 'element-plus'
 
   defineOptions({ name: 'CitywalkPlaces' })
 
   type Place = Api.Citywalk.Place
 
-  // 搜索表单（单一数据源：搜索/重置/分页均基于此；ArtSearchBar 空值自动剔除）
   const defaultSearchForm = () => ({ keyword: '', status: '' })
   const searchForm = ref(defaultSearchForm())
 
@@ -68,13 +105,11 @@
     } catch (error) {
       if (error instanceof PostgrestRequestError && error.code === '42501') {
         permissionDenied.value = true
-        data.value = []
-        pagination.total = 0
       } else {
         console.error('获取景点列表失败:', error)
-        data.value = []
-        pagination.total = 0
       }
+      data.value = []
+      pagination.total = 0
     } finally {
       loading.value = false
     }
@@ -100,25 +135,81 @@
     getData()
   }
 
-  // 详情抽屉
-  const detailVisible = ref(false)
-  const detailRow = ref<Place | null>(null)
-  const openDetail = (row: Place) => {
-    detailRow.value = row
-    detailVisible.value = true
-  }
-
-  /** 状态着色：Published 绿 / PendingReview 橙 / Archived 灰 */
-  const statusTagType = (status: string | null) => {
-    if (status === 'Published') return 'success'
-    if (status === 'PendingReview') return 'warning'
-    return 'info'
-  }
+  // ------------------------------------------------------------------
+  // 生命周期操作
+  // ------------------------------------------------------------------
   const statusLabel = (status: string | null) => {
     if (status === 'Published') return '已发布'
     if (status === 'PendingReview') return '待审核'
     if (status === 'Archived') return '已归档'
     return status || '-'
+  }
+  const statusTagType = (status: string | null) => {
+    if (status === 'Published') return 'success'
+    if (status === 'PendingReview') return 'warning'
+    return 'info'
+  }
+
+  // 发布
+  const publishVisible = ref(false)
+  const publishTarget = ref<Place | null>(null)
+  const publishSlug = ref('')
+  const publishing = ref(false)
+
+  const openPublish = (row: Place) => {
+    publishTarget.value = row
+    publishSlug.value = row.slug || ''
+    publishVisible.value = true
+  }
+
+  const handlePublish = async () => {
+    if (!publishTarget.value || !publishSlug.value.trim()) return
+    publishing.value = true
+    try {
+      const result = await publishPlace(publishTarget.value.id, publishSlug.value.trim())
+      ElMessage.success(`发布成功：${result.url || result.slug}`)
+      publishVisible.value = false
+      getData()
+    } catch (error) {
+      console.error('发布失败:', error)
+    } finally {
+      publishing.value = false
+    }
+  }
+
+  // 状态转换（归档 / 重审）
+  const runStatusChange = async (row: Place, newStatus: string, tip: string) => {
+    try {
+      await ElMessageBox.confirm(tip, '状态变更', { type: 'warning' })
+    } catch {
+      return
+    }
+    try {
+      await changePlaceStatus(row.id, newStatus)
+      ElMessage.success('状态已更新')
+      getData()
+    } catch (error) {
+      console.error('状态变更失败:', error)
+    }
+  }
+
+  const handleArchive = (row: Place) =>
+    runStatusChange(
+      row,
+      'Archived',
+      row.status === 'Published'
+        ? '归档后 C 端不可见；恢复需先转「待审核」重审。确认归档？'
+        : '审核不通过归档？确认后可随时转回待审核。'
+    )
+  const handleReview = (row: Place) =>
+    runStatusChange(row, 'PendingReview', '转入待审核（重新进入审核流程）？')
+
+  // 内容抽屉
+  const contentVisible = ref(false)
+  const contentTarget = ref<Place | null>(null)
+  const openContent = (row: Place) => {
+    contentTarget.value = row
+    contentVisible.value = true
   }
 
   const { columns, columnChecks } = useTableColumns<Place>(() => [
@@ -126,41 +217,29 @@
     {
       prop: 'name',
       label: '景点名称',
-      minWidth: 180,
+      minWidth: 170,
       formatter: (row) => row.name || '-'
     },
     {
       prop: 'status',
       label: '状态',
-      width: 100,
+      width: 90,
       formatter: (row) =>
         h(ElTag, { type: statusTagType(row.status), size: 'small' }, () => statusLabel(row.status))
     },
     {
-      prop: 'latitude',
-      label: '纬度',
-      width: 110,
-      formatter: (row) => (row.latitude != null ? String(row.latitude) : '-')
-    },
-    {
-      prop: 'longitude',
-      label: '经度',
-      width: 110,
-      formatter: (row) => (row.longitude != null ? String(row.longitude) : '-')
-    },
-    {
-      prop: 'entity_id',
-      label: '实体 ID',
-      width: 140,
-      showOverflowTooltip: true,
-      formatter: (row) => row.entity_id || '-'
-    },
-    {
       prop: 'slug',
-      label: 'Slug',
-      minWidth: 140,
+      label: 'Slug / 实体 ID',
+      minWidth: 170,
       showOverflowTooltip: true,
-      formatter: (row) => row.slug || '（未发布）'
+      formatter: (row) =>
+        row.slug ? `${row.slug}（${row.entity_id || '无ID'}）` : row.entity_id || '（未发布）'
+    },
+    {
+      prop: 'latitude',
+      label: '坐标',
+      width: 150,
+      formatter: (row) => (row.latitude != null ? `${row.latitude}, ${row.longitude}` : '-')
     },
     {
       prop: 'created_at',
@@ -171,12 +250,59 @@
     {
       prop: 'operation',
       label: '操作',
-      width: 90,
+      width: 230,
       fixed: 'right',
-      formatter: (row) =>
-        h(ElButton, { type: 'primary', link: true, onClick: () => openDetail(row) }, () => '详情')
+      formatter: (row) => {
+        const buttons = [] as ReturnType<typeof h>[]
+        if (row.status !== 'Archived') {
+          buttons.push(
+            h(
+              ElButton,
+              { type: 'primary', link: true, size: 'small', onClick: () => openPublish(row) },
+              () => (row.status === 'Published' ? '换绑' : '发布')
+            )
+          )
+        }
+        if (row.status === 'Published') {
+          buttons.push(
+            h(
+              ElButton,
+              { type: 'warning', link: true, size: 'small', onClick: () => handleReview(row) },
+              () => '重审'
+            )
+          )
+        }
+        if (row.status !== 'Archived') {
+          buttons.push(
+            h(
+              ElButton,
+              { type: 'danger', link: true, size: 'small', onClick: () => handleArchive(row) },
+              () => '归档'
+            )
+          )
+        } else {
+          buttons.push(
+            h(
+              ElButton,
+              { type: 'warning', link: true, size: 'small', onClick: () => handleReview(row) },
+              () => '恢复重审'
+            )
+          )
+        }
+        buttons.push(
+          h(ElButton, { link: true, size: 'small', onClick: () => openContent(row) }, () => '内容')
+        )
+        return h('div', null, buttons)
+      }
     }
   ])
 
   onMounted(getData)
 </script>
+
+<style lang="scss" scoped>
+  .text-secondary {
+    font-size: 12px;
+    color: var(--el-text-color-secondary);
+  }
+</style>
